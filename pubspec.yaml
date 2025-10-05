@@ -1,0 +1,160 @@
+name: notibuku
+description: "A new handy notebook."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
+  sqflite: ^2.4.2
+  path: ^1.9.1
+  flutter_riverpod: ^3.0.0
+  intl: ^0.20.2
+  url_launcher: ^6.3.2
+  flutter_launcher_icons: ^0.14.4
+  flutter_card_swiper: ^7.0.2
+  
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^5.0.0
+  custom_lint: ^0.8.0
+  riverpod_lint: ^3.0.0
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+
+  # Declare the assets to include in your app bundle.
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/fonts/
+
+  # Declare custom fonts used in the app.
+  fonts:
+    - family: Tahoma
+      fonts:
+        - asset: assets/fonts/tahoma.ttf
+        - asset: assets/fonts/tahomabd.ttf
+          style: italic
+          weight: 700
+    - family: Piazzolla
+      fonts:
+        - asset: assets/fonts/Piazzolla-Bold.ttf
+          style: italic
+          weight: 700
+    - family: FiraCode
+      fonts:
+        - asset: assets/fonts/FiraCode-Bold.ttf
+        - asset: assets/fonts/FiraCode-Light.ttf
+        - asset: assets/fonts/FiraCode-Medium.ttf
+        - asset: assets/fonts/FiraCode-Regular.ttf
+          style: italic
+          weight: 700
+    - family: Technology
+      fonts:
+        - asset: assets/fonts/Technology-Bold.ttf
+        - asset: assets/fonts/Technology-Italic.ttf
+        - asset: assets/fonts/Technology-BoldItalic.ttf
+          style: italic
+          weight: 700
+    - family: GreatVibes
+      fonts:
+        - asset: assets/fonts/GreatVibes-Regular.ttf
+          style: italic
+          weight: 700
+
+    - family: AGENCYB
+      fonts:
+        - asset: assets/fonts/AGENCYB.TTF
+          style: italic
+          weight: 700
+    - family: AgendaKing
+      fonts:
+        - asset: assets/fonts/AgendaKing.ttf
+          style: italic
+          weight: 700
+    - family: ALGER
+      fonts:
+        - asset: assets/fonts/ALGER.TTF
+          style: italic
+          weight: 700
+    - family: Arial 
+      fonts: 
+        - asset: assets/fonts/arialbd.ttf
+        - asset: assets/fonts/arialbi.ttf
+        - asset: assets/fonts/ariblk.ttf
+          style: italic
+          weight: 700
+    - family: BOD
+      fonts:
+        - asset: assets/fonts/BOD_BI.TTF
+        - asset: assets/fonts/BOD_CI.TTF
+        - asset: assets/fonts/BOD_R.TTF
+          style: italic
+          weight: 700
+    - family: Cambria 
+      fonts:
+        - asset: assets/fonts/cambriai.ttf
+        - asset: assets/fonts/cambriai.ttf
+          style: italic
+          weight: 700
+    - family: Comp
+      fonts:
+        - asset: assets/fonts/compi.ttf
+          style: italic
+          weight: 700
+    - family: Consola
+      fonts:
+        - asset: assets/fonts/consolai.ttf
+          style: italic
+          weight: 700
+
+# Configuration for flutter_launcher_icons package.
+flutter_launcher_icons:
+  # Targets iOS and Android icon generation.
+  ios: true
+  
+  # Android icon name (use default 'launcher_icon' name).
+  android: 'launcher_icon'
+
+  # Path to the main icon image.
+  image_path: "assets/icons/logo.png"
+
+  # Background color for adaptive Android icon.
+  adaptive_icon_background: "#000099"
+
+  # Remove alpha channel from iOS icon image for compatibility.
+  remove_alpha_ios: true
+
+  # Foreground icon for Android adaptive icons.
+  adaptive_icon_foreground: "assets/icons/logo.png"
+
+  # Minimum Android SDK version to support.
+  # Default is 21, minimum supported by Flutter.
+  min_sdk_android: 21
