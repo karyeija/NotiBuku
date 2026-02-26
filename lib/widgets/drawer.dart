@@ -15,19 +15,19 @@ class _CustomDrawerState extends State<CustomDrawer> {
     // Define the icons and dimensions
     final aboutIcon = 'assets/images/aboutButton.png';
     var pageHeight = UIHelpers.pageHeight(context);
-    var pageWidth = UIHelpers.pageWidth(context);
+    // var pageWidth = UIHelpers.pageWidth(context);
     return Drawer(
-      width: pageWidth * 0.6, // Set the width of the drawer
-      backgroundColor: Colors.white,
+      // width: pageWidth * 0.6, // Set the width of the drawer
+      // backgroundColor: Colors.white,
       child: ListView(
         children: [
           DrawerHeader(
             // padding: EdgeInsets.zero,
-            decoration: const BoxDecoration(color: Colors.deepPurple),
+            // decoration: const BoxDecoration(color: Colors.deepPurple),
             child: Text(
               'Settings',
               style: TextStyle(
-                color: Colors.white,
+                color: Colors.deepPurple,
                 fontSize: pageHeight * 0.06,
               ),
             ),

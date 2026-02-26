@@ -6,8 +6,8 @@ const String appName = 'NotiBuku'; //the app name
 const String appDescription =
     'A handy digital note taking application'; //a short description
 const String appVersion = '1.0.0'; //the app version eg 1.0.0
-const String developerName = 'Karyeija Felex'; //Your name
-const String developerEmail = 'karyeijafelex@gmail.com'; //Your email
+const String developerName = 'aikodeware Ltd'; //Your name
+const String developerEmail = 'aikodeware@gmail.com'; //Your email
 const String logoPath = 'assets/icons/logo.png'; //path/to/your/icon
 
 class AboutPage extends StatelessWidget {

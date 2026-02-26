@@ -79,52 +79,57 @@ class _NoteFormWidgetState extends State<NoteFormWidget> {
   @override
   Widget build(BuildContext context) {
     double sizeFactor = getSizeFactor(context);
-    final double titlefSize = sizeFactor * 0.025;
+    final double titlefSize = sizeFactor * 0.04;
     final double contentfSize = sizeFactor * 0.02;
     return Scaffold(
-      appBar: AppBar(
-        actions: isEditing
-            ? [
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: SizedBox(
-                    height: sizeFactor * 0.1,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green[900],
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+      appBar: AppBar(actions: []),
+
+      bottomSheet: BottomAppBar(
+        child: isEditing
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: SizedBox(
+                      height: sizeFactor * 0.1,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green[900],
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(color: Colors.white),
                             ),
                           ),
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: const Text(
-                            'Cancel',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green[900],
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green[900],
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: _save,
+                            child: const Text(
+                              'Save',
+                              style: TextStyle(color: Colors.white),
                             ),
                           ),
-                          onPressed: _save,
-                          child: const Text(
-                            'Save',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ]
-            : [],
+                ],
+              )
+            : Center(child: Text('')),
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 5.0),
@@ -133,24 +138,27 @@ class _NoteFormWidgetState extends State<NoteFormWidget> {
           child: SafeArea(
             child: Column(
               children: [
-                SizedBox(
-                  height: sizeFactor * 0.05,
-                  child: TextFormField(
-                    textCapitalization: TextCapitalization.sentences,
-                    focusNode: _titleFocusNode,
-                    initialValue: title,
-                    decoration: const InputDecoration(hintText: 'Title'),
-                    style: TextStyle(
-                      fontSize: titlefSize,
-                      fontWeight: FontWeight.bold,
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: SizedBox(
+                    height: sizeFactor * 0.1,
+                    child: TextFormField(
+                      textCapitalization: TextCapitalization.sentences,
+                      focusNode: _titleFocusNode,
+                      initialValue: title,
+                      decoration: const InputDecoration(hintText: 'Title'),
+                      style: TextStyle(
+                        fontSize: titlefSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      validator: (v) =>
+                          v == null || v.isEmpty ? "Required" : null,
+                      onSaved: (v) => title = v ?? '',
+                      maxLines: 1,
+                      scrollPhysics: const AlwaysScrollableScrollPhysics(),
+                      keyboardType: TextInputType.text,
+                      textAlignVertical: TextAlignVertical.center,
                     ),
-                    validator: (v) =>
-                        v == null || v.isEmpty ? "Required" : null,
-                    onSaved: (v) => title = v ?? '',
-                    maxLines: 1,
-                    scrollPhysics: const AlwaysScrollableScrollPhysics(),
-                    keyboardType: TextInputType.text,
-                    textAlignVertical: TextAlignVertical.center,
                   ),
                 ),
                 Expanded(
