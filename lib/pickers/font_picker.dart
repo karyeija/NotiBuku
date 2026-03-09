@@ -1,95 +1,90 @@
-// import 'package:flutter/material.dart';
-// import 'package:notibuku/models/fonts.dart';
-// import 'package:notibuku/services/sizefactor.dart';
+import 'package:flutter/material.dart';
+import 'package:notibuku/models/fonts.dart';
 
-// Future<String?> showFontPickerDialog(BuildContext context) async {
-//   var availableFonts = AppFonts.availableFonts;
-//   var uniqueFonts = availableFonts.toSet();
+Future<String?> showFontPickerDialog(BuildContext context) async {
+  var availableFonts = AppFonts.availableFonts;
+  var uniqueFonts = availableFonts.toSet();
 
-//   final chosenFont = await showGeneralDialog<String>(
-//     context: context,
-//     barrierDismissible: true,
-//     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
-//     barrierColor: Colors.black54,
-//     transitionDuration: const Duration(milliseconds: 20),
-//     pageBuilder:
-//         (
-//           BuildContext buildContext,
-//           Animation animation,
-//           Animation secondaryAnimation,
-//         ) {
-//           var pageWidth = MediaQuery.of(context).size.width;
-//           double dialogWidth = pageWidth * 0.45;
-//           double sizeFactor = getSizeFactor(context);
+  final chosenFont = await showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) => Container(
+      height: 120,
+      margin: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Container(
+              width: 40,
+              height: 4,
+              margin: EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Horizontal scrollable font previews
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: uniqueFonts.map((font) {
+                    return GestureDetector(
+                      onTap: () => Navigator.pop(context, font),
+                      child: Container(
+                        alignment: Alignment.center,
+                        width: 50,
+                        height: 50,
+                        margin: EdgeInsets.only(right: 12),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          // vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          backgroundBlendMode: BlendMode.screen,
+                          color: Colors.grey[100],
 
-//           double radius = sizeFactor * 0.02;
-//           return Stack(
-//             children: [
-//               Positioned(
-//                 top: sizeFactor * 0.1,
-//                 right: pageWidth * 0.02,
-//                 child: Material(
-//                   shape: RoundedRectangleBorder(
-//                     borderRadius: BorderRadius.only(
-//                       topLeft: Radius.circular(radius),
-//                       topRight: Radius.circular(radius),
-//                     ),
-//                   ),
-//                   elevation: 24,
-//                   child: Container(
-//                     width: dialogWidth,
-//                     padding: EdgeInsets.all(0),
-//                     color: Colors.white,
-//                     child: Column(
-//                       mainAxisSize: MainAxisSize.min,
-//                       children: [
-//                         Padding(
-//                           padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
-//                           child: Text(
-//                             'Select Font',
-//                             style: TextStyle(
-//                               color: Colors.blue,
-//                               fontSize: sizeFactor * 0.03,
-//                               fontFamily: "alger".toUpperCase(),
-//                             ),
-//                           ),
-//                         ),
-//                         Divider(color: Colors.red),
-//                         SizedBox(
-//                           height:
-//                               sizeFactor *
-//                               0.6, // Fixed height for the scroll area
-//                           child: SingleChildScrollView(
-//                             child: Column(
-//                               children: uniqueFonts.map((font) {
-//                                 return ListTile(
-//                                   selectedColor: Colors.amber,
-//                                   title: Text(
-//                                     textAlign: TextAlign.center,
-//                                     font,
-//                                     style: TextStyle(
-//                                       fontFamily: font,
-//                                       fontSize: sizeFactor * 0.03,
-//                                     ),
-//                                   ),
-//                                   onTap: () => Navigator.pop(context, font),
-//                                 );
-//                               }).toList(),
-//                             ),
-//                           ),
-//                         ),
-//                       ],
-//                     ),
-//                   ),
-//                 ),
-//               ),
-//             ],
-//           );
-//         },
-//   );
-//   return chosenFont;
+                          border: Border.all(color: Colors.grey[300]!),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            FittedBox(
+                              child: Text(
+                                textAlign: TextAlign.center,
+                                'Aa',
+                                style: TextStyle(
+                                  fontFamily: font,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
 
-//   // if (chosenFont != null) {
-//   //   ref.read(fontFamilyProvider.notifier).state = chosenFont;
-//   // }
-// }
+                                  // height: 1.2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  return chosenFont;
+}

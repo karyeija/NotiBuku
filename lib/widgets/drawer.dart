@@ -24,12 +24,17 @@ class _CustomDrawerState extends State<CustomDrawer> {
           DrawerHeader(
             // padding: EdgeInsets.zero,
             // decoration: const BoxDecoration(color: Colors.deepPurple),
-            child: Text(
-              'Settings',
-              style: TextStyle(
-                color: Colors.deepPurple,
-                fontSize: pageHeight * 0.06,
-              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  'Settings',
+                  style: TextStyle(
+                    color: Colors.deepPurple,
+                    fontSize: pageHeight * 0.04,
+                  ),
+                ),
+              ],
             ),
           ),
           ListTile(
@@ -37,9 +42,9 @@ class _CustomDrawerState extends State<CustomDrawer> {
             title: styledText(
               'About',
               fontFamily: 'Tahoma',
-              fontSize: pageHeight * 0.04,
+              fontSize: pageHeight * 0.02,
             ),
-            leading: Image.asset(aboutIcon, height: pageHeight * 0.08),
+            leading: Image.asset(aboutIcon, height: pageHeight * 0.023),
             onTap: () => showGeneralDialog(
               context: context,
               pageBuilder:
