@@ -3,7 +3,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -14,9 +13,11 @@ import 'package:notibuku/services/note_services.dart';
 import 'package:notibuku/services/sizefactor.dart';
 import 'package:notibuku/widgets/fontslider.dart';
 import 'package:media_gallery_saver/media_gallery_saver.dart';
+import 'package:path/path.dart' as path;
 
 class NoteFormWidget extends ConsumerStatefulWidget {
   final Note? note;
+
   const NoteFormWidget({super.key, this.note});
 
   @override
@@ -24,6 +25,7 @@ class NoteFormWidget extends ConsumerStatefulWidget {
 }
 
 class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
+  bool _isCapturing = false; // Track capture state
   final _formKey = GlobalKey<FormState>();
   String title = '', content = '';
   Color noteColor = Colors.white;
@@ -178,6 +180,12 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
 
   // Add this method
   Future<void> _captureNoteContent() async {
+    if (_isCapturing) return; // Prevent double taps
+
+    setState(() {
+      _isCapturing = true; // 🔥 INSTANT visual feedback
+    });
+
     debugPrint('🔥 Camera tapped!');
 
     final screenWidth = MediaQuery.of(context).size.width;
@@ -190,7 +198,7 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
           constraints: BoxConstraints(maxWidth: screenWidth * 0.8),
           child: Text(
             content.isEmpty ? 'Your content here' : content,
-            textAlign: TextAlign.center,
+            textAlign: TextAlign.start,
             style: TextStyle(
               fontFamily: contentFontFamily,
               color: contentColor,
@@ -213,13 +221,13 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
     try {
       final image = await screenshotController.captureFromWidget(
         noteWidget,
-        delay: Duration(milliseconds: 100),
+        delay: Duration(milliseconds: 1),
         pixelRatio: 8.0, // 🔥 CRISP, PROFESSIONAL QUALITY
       );
 
       debugPrint('✅ Ultra HD Image: ${image.length} bytes');
       if (mounted) {
-        _showScreenshotDialog(image);
+        _showScreenshotDialog(image); // Your existing dialog
       }
     } catch (e) {
       debugPrint('❌ Error: $e');
@@ -228,32 +236,38 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
           context,
         ).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
+    } finally {
+      // 🔥 Reset animation when done
+      if (mounted) {
+        setState(() {
+          _isCapturing = false;
+        });
+      }
     }
   }
 
   Future<bool> _requestStoragePermission() async {
-    // Android 13+ (API 33+): Use media permissions
+    // Desktop: No permissions needed
+    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+      return true;
+    }
+
+    // Your original Android 13+ logic unchanged
     if (await Permission.manageExternalStorage.isGranted) {
       return true;
     }
 
-    // Request appropriate storage permission
     PermissionStatus status;
-
     if (Platform.isAndroid) {
-      // Try media images first (Android 13+)
       status = await Permission.photos.request();
       if (!status.isGranted) {
-        // Fallback to storage (older Android)
         status = await Permission.storage.request();
       }
     } else {
-      // iOS uses photos permission
       status = await Permission.photos.request();
     }
 
     if (status.isPermanentlyDenied) {
-      // Open settings
       await openAppSettings();
       return false;
     }
@@ -261,15 +275,37 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
     return status.isGranted;
   }
 
+  Future<String?> _getDesktopGalleryPath() async {
+    Directory? galleryDir;
+
+    if (Platform.isWindows) {
+      galleryDir = Directory(r'C:\Users\Public\Pictures');
+      if (!await galleryDir.exists()) {
+        galleryDir = await getDownloadsDirectory();
+      }
+    } else if (Platform.isMacOS) {
+      galleryDir = await getDownloadsDirectory();
+    } else if (Platform.isLinux) {
+      final homeDir = Platform.environment['HOME'];
+      galleryDir = Directory('$homeDir/Pictures');
+      if (!await galleryDir.exists()) {
+        galleryDir = await getDownloadsDirectory();
+      }
+    }
+
+    return galleryDir?.path;
+  }
+
   Future<void> _shareOrSaveImage(
     Uint8List imageBytes, {
+    required BuildContext context,
     bool saveToGallery = false,
   }) async {
     try {
       if (saveToGallery && !(await _requestStoragePermission())) {
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text('Storage permission denied'),
               backgroundColor: Colors.orange,
             ),
@@ -285,19 +321,40 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
       await file.writeAsBytes(imageBytes);
 
       if (saveToGallery) {
-        // 🔥 media_gallery_saver - Perfect API match!
-        final saver = MediaGallerySaver();
-        final success = await saver.saveMediaFromFile(file: file);
-        if (success && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✅ Saved to Gallery!'),
-              backgroundColor: Colors.green,
-            ),
-          );
+        if (Platform.isAndroid || Platform.isIOS) {
+          // 🔥 Mobile: Your original media_gallery_saver code unchanged
+          final saver = MediaGallerySaver();
+          final success = await saver.saveMediaFromFile(file: file);
+          if (success && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ Saved to Gallery!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          // Desktop: Save to Pictures/Downloads
+          final galleryPath = await _getDesktopGalleryPath();
+          if (galleryPath != null) {
+            final desktopPath = path.join(
+              galleryPath,
+              'notibuku_$timestamp.png',
+            );
+            await file.copy(desktopPath);
+
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('✅ Saved to Pictures: $galleryPath'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          }
         }
       } else {
-        // Your SharePlus unchanged 👇
+        // 🔥 SharePlus EXACTLY as you had it - unchanged
         try {
           await SharePlus.instance.share(
             ShareParams(
@@ -313,7 +370,7 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
       await file.delete();
     } catch (e) {
       debugPrint('Share failed: $e');
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
         );
@@ -347,7 +404,11 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
                     backgroundColor: Colors.green,
                     onPressed: () {
                       Navigator.pop(context);
-                      _shareOrSaveImage(image, saveToGallery: true);
+                      _shareOrSaveImage(
+                        context: context,
+                        image,
+                        saveToGallery: true,
+                      );
                     },
                     child: Icon(Icons.download),
                   ),
@@ -357,7 +418,7 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
                     backgroundColor: Colors.blue,
                     onPressed: () {
                       Navigator.pop(context);
-                      _shareOrSaveImage(image);
+                      _shareOrSaveImage(context: context, image);
                     },
                     child: Icon(Icons.share),
                   ),
@@ -510,15 +571,19 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
                     ),
                   ),
                 ),
-                GestureDetector(
-                  onTap: _captureNoteContent,
-                  child: FaIcon(
-                    FontAwesomeIcons.camera,
-                    color: Colors.white,
-                    size: screenWidth * 0.06,
-                  ),
-                ),
+                _buildScreenshotButton(screenWidth),
 
+                // GestureDetector(
+                //   onTap: _captureNoteContent,
+                //   child: RotatedBox(
+                //     quarterTurns: 1,
+                //     child: Icon(
+                //       Icons.screenshot_outlined,
+                //       color: Colors.white,
+                //       size: screenWidth * 0.1,
+                //     ),
+                //   ),
+                // ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green[600],
@@ -840,6 +905,29 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
               ),
               SizedBox.shrink(),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Your screenshot button with animation:
+  Widget _buildScreenshotButton(double screenWidth) {
+    return GestureDetector(
+      onTap: _isCapturing ? null : _captureNoteContent,
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 150),
+        transform: Matrix4.identity()
+          ..scaledByDouble(_isCapturing ? 0.9 : 1.0, 1, 1, 1),
+        child: RotatedBox(
+          quarterTurns: 1,
+          child: Icon(
+            _isCapturing ? Icons.screenshot : Icons.screenshot_outlined,
+            color: _isCapturing ? Colors.yellow : Colors.white,
+            size: screenWidth * 0.1,
+            shadows: _isCapturing
+                ? [Shadow(color: Colors.black54, blurRadius: 4)]
+                : null,
           ),
         ),
       ),

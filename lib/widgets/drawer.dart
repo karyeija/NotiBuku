@@ -41,7 +41,7 @@ class _CustomDrawerState extends State<CustomDrawer> {
             // tileColor: Colors.amber,
             title: styledText(
               'About',
-              fontFamily: 'Tahoma',
+              fontFamily: 'GreatVibes',
               fontSize: pageHeight * 0.02,
             ),
             leading: Image.asset(aboutIcon, height: pageHeight * 0.023),

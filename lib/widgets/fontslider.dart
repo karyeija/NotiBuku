@@ -48,7 +48,7 @@ class FontSizeSlider extends ConsumerWidget {
     final sizeFactor = getSizeFactor(context);
 
     final double computedMinFontSize = minFontSize ?? 12.0;
-    final double computedMaxFontSize = maxFontSize ?? 32.0;
+    final double computedMaxFontSize = maxFontSize ?? 40.0;
     final int currentValue = fontSize
         .clamp(computedMinFontSize, computedMaxFontSize)
         .round();

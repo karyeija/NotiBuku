@@ -5,7 +5,6 @@ import 'package:notibuku/services/note_services.dart';
 import 'package:notibuku/services/sizefactor.dart';
 import 'package:notibuku/widgets/drawer.dart';
 import 'package:animated_text_kit2/animated_text_kit2.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:notibuku/widgets/note_card.dart'; // 🔥 ADD THIS IMPORT
 
 class NoteList extends StatefulWidget {
@@ -110,7 +109,7 @@ class _NoteListState extends State<NoteList> {
       appBar: AppBar(
         title: Row(
           children: [
-            FaIcon(FontAwesomeIcons.bookOpen, color: Colors.amber[200]),
+            Icon(Icons.menu_book_sharp, color: Colors.amber[200]),
             SizedBox(width: 12),
             AnimatedTextKit2.Rainbow(
               repeat: true,

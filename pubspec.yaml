@@ -4,7 +4,7 @@ description: "A new handy notebook."
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 1.0.0+5
+version: 1.0.0+6
 
 environment:
   sdk: ^3.9.2
@@ -26,7 +26,6 @@ dependencies:
   permission_handler: ^12.0.1
   sqflite_common_ffi: ^2.3.7+1
   animated_text_kit2: ^0.0.4
-  font_awesome_flutter: ^10.12.0
   path_provider: ^2.1.5
   screenshot: ^3.0.0
   share_plus: ^12.0.1
@@ -42,7 +41,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   custom_lint: ^0.8.0
   riverpod_lint: ^3.0.0
 
@@ -65,12 +64,7 @@ flutter:
 
   # Declare custom fonts used in the app.
   fonts:
-    - family: Tahoma
-      fonts:
-        - asset: assets/fonts/tahoma.ttf
-        - asset: assets/fonts/tahomabd.ttf
-          style: italic
-          weight: 700
+
     - family: Piazzolla
       fonts:
         - asset: assets/fonts/Piazzolla-Bold.ttf
@@ -112,18 +106,15 @@ flutter:
         - asset: assets/fonts/ALGER.TTF
           style: italic
           weight: 700
-    - family: Arial 
+    - family: PerfectoCalligraphy 
       fonts: 
-        - asset: assets/fonts/arialbd.ttf
-        - asset: assets/fonts/arialbi.ttf
-        - asset: assets/fonts/ariblk.ttf
+        - asset: assets/fonts/PerfectoCalligraphy.ttf
           style: italic
           weight: 700
-    - family: BOD
+    - family: OrganicalPersonalUseBoldItalic
       fonts:
-        - asset: assets/fonts/BOD_BI.TTF
-        - asset: assets/fonts/BOD_CI.TTF
-        - asset: assets/fonts/BOD_R.TTF
+        - asset: assets/fonts/OrganicalPersonalUseBoldItalic-2O6xe.ttf
+   
           style: italic
           weight: 700
     - family: Cambria 
@@ -132,14 +123,14 @@ flutter:
         - asset: assets/fonts/cambriai.ttf
           style: italic
           weight: 700
-    - family: Comp
+    - family: BeautifulPeoplePersonalUse
       fonts:
-        - asset: assets/fonts/compi.ttf
+        - asset: assets/fonts/BeautifulPeoplePersonalUse-dE0g.ttf
           style: italic
           weight: 700
-    - family: Consola
+    - family: HighupItalicPersonalUseBoldItalic
       fonts:
-        - asset: assets/fonts/consolai.ttf
+        - asset: assets/fonts/HighupItalicPersonalUseBoldItalic-vmqnM.ttf
           style: italic
           weight: 700
 
