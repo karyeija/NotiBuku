@@ -4,7 +4,7 @@ description: "A new handy notebook."
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
-version: 1.0.0+6
+version: 1.0.0+8
 
 environment:
   sdk: ^3.9.2
@@ -68,13 +68,12 @@ flutter:
     - family: Piazzolla
       fonts:
         - asset: assets/fonts/Piazzolla-Bold.ttf
+        - asset: assets/fonts/Piazzolla-Regular.ttf
           style: italic
           weight: 700
     - family: FiraCode
       fonts:
         - asset: assets/fonts/FiraCode-Bold.ttf
-        - asset: assets/fonts/FiraCode-Light.ttf
-        - asset: assets/fonts/FiraCode-Medium.ttf
         - asset: assets/fonts/FiraCode-Regular.ttf
           style: italic
           weight: 700
@@ -82,7 +81,6 @@ flutter:
       fonts:
         - asset: assets/fonts/Technology-Bold.ttf
         - asset: assets/fonts/Technology-Italic.ttf
-        - asset: assets/fonts/Technology-BoldItalic.ttf
           style: italic
           weight: 700
     - family: GreatVibes

@@ -11,7 +11,7 @@ class FontSizeNotifier extends StateNotifier<double> {
   }
 }
 
-/// 🔥 SEPARATE PROVIDERS for Title & Content
+/// SEPARATE PROVIDERS for Title & Content
 final titleFontSizeProvider = StateNotifierProvider<FontSizeNotifier, double>(
   (ref) => FontSizeNotifier(),
 );
@@ -27,7 +27,7 @@ class FontSizeSlider extends ConsumerWidget {
   final double? minFontSize;
   final double? maxFontSize;
   final bool isTitle;
-  final Color? containerColor; // 🔥 Container color parameter
+  final Color? containerColor; // Container color parameter
 
   const FontSizeSlider({
     super.key,
@@ -39,7 +39,7 @@ class FontSizeSlider extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 🔥 Use correct provider (font size only)
+    // Use correct provider (font size only)
     final fontSizeProvider = isTitle
         ? titleFontSizeProvider
         : contentFontSizeProvider;
@@ -56,7 +56,7 @@ class FontSizeSlider extends ConsumerWidget {
     final selectorHeight = sizeFactor * 0.08;
     final selectorWidth = sizeFactor * 0.23;
 
-    // 🔥 Use containerColor directly - no state management
+    // Use containerColor directly - no state management
     final effectiveColor =
         containerColor ?? const Color.fromARGB(255, 20, 0, 109);
 

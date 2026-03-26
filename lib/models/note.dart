@@ -4,12 +4,14 @@ class Note {
   final String content;
   final String createdAt;
   final String? color;
-  final String? titleTextColor; // Title color
-  final String? contentTextColor; // content text  color
-  final String? titleFontFamily; // Title font
-  final String? contentFontFamily; // Content font
-  final double? titleFontSize; // 🔥 NEW: Title size
-  final double? contentFontSize; // 🔥 NEW: Content size
+  final String? titleTextColor;
+  final String? contentTextColor;
+  final String? titleFontFamily;
+  final String? contentFontFamily;
+  final double? titleFontSize;
+  final double? contentFontSize;
+  final String? category;
+  final bool? isCompleted; // NEW: For To-Do completion status
 
   Note({
     this.id,
@@ -21,8 +23,10 @@ class Note {
     this.contentTextColor,
     this.titleFontFamily,
     this.contentFontFamily,
-    this.titleFontSize, // 🔥 NEW
-    this.contentFontSize, // 🔥 NEW
+    this.titleFontSize,
+    this.contentFontSize,
+    this.category,
+    this.isCompleted = false, //  Default false for new todos
   });
 
   Map<String, dynamic> toMap() {
@@ -30,6 +34,7 @@ class Note {
       'title': title,
       'content': content,
       'createdAt': createdAt,
+      'is_completed': isCompleted == true ? 1 : 0, //  Store as 0/1
       if (id != null) 'id': id,
       if (color != null) 'color': color,
       if (titleTextColor != null) 'titleTextColor': titleTextColor,
@@ -38,6 +43,7 @@ class Note {
       if (contentFontFamily != null) 'contentFontFamily': contentFontFamily,
       if (titleFontSize != null) 'titleFontSize': titleFontSize,
       if (contentFontSize != null) 'contentFontSize': contentFontSize,
+      if (category != null) 'category': category,
     };
     return map;
   }
@@ -55,6 +61,9 @@ class Note {
       contentFontFamily: map['contentFontFamily'] as String?,
       titleFontSize: map['titleFontSize']?.toDouble(),
       contentFontSize: map['contentFontSize']?.toDouble(),
+      category: map['category'] as String?,
+      isCompleted:
+          (map['is_completed'] as int?) == 1, // Convert 1→true, else false
     );
   }
 }

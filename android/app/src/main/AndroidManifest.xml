@@ -38,7 +38,7 @@
             android:value="2" />
     </application>
 
-    <!-- ✅ Text processing for share/copy-paste -->
+    <!--  Text processing for share/copy-paste -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
