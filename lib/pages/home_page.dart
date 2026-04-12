@@ -3,10 +3,12 @@ import 'package:notibuku/models/note.dart';
 import 'package:notibuku/pages/details_page.dart';
 import 'package:notibuku/services/note_services.dart';
 import 'package:notibuku/services/sizefactor.dart';
+import 'package:notibuku/utils/helpers.dart';
 import 'package:notibuku/widgets/drawer.dart';
 import 'package:animated_text_kit2/animated_text_kit2.dart';
-import 'package:notibuku/widgets/note_card.dart';
-import 'package:notibuku/widgets/todo_notecard.dart';
+import 'package:notibuku/widgets/new_note_button_widget.dart';
+import 'package:notibuku/widgets/notes/grouped_notes_list_widget.dart';
+import 'package:notibuku/widgets/screenshot/todo_summary.dart';
 
 class NoteList extends StatefulWidget {
   const NoteList({super.key});
@@ -177,12 +179,17 @@ class _NoteListState extends State<NoteList> {
     super.dispose();
   }
 
-  void _showNoteDialog(Note? note) async {
-    await Navigator.of(context).push<bool>(
+  Future<void> _showNoteDialog(Note? note) async {
+    final result = await Navigator.of(context).push<Note>(
       MaterialPageRoute(builder: (context) => DetailsPage(note: note)),
     );
-    await loadNotes(); // Refresh data only
-    //  REMOVED: No forced reset to categories
+
+    if (result != null) {
+      // IMPORTANT: update DB OR local list immediately
+      await DatabaseService.updateNote(result);
+    }
+
+    await loadNotes(); // refresh UI properly
   }
 
   void _deleteNote(int id) async {
@@ -210,25 +217,15 @@ class _NoteListState extends State<NoteList> {
     );
 
     await DatabaseService.updateNote(updatedNote);
-    await loadNotes(); // Refresh full list
-  }
 
-  String _getMonthName(int month) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return months[month - 1];
+    setState(() {
+      allNotes = [
+        for (final n in allNotes)
+          if (n.id == updatedNote.id) updatedNote else n,
+      ];
+    });
+    await loadNotes();
+    _applyFilters();
   }
 
   int _getCategoryNoteCount(String category) {
@@ -322,7 +319,12 @@ class _NoteListState extends State<NoteList> {
 
     return Scaffold(
       drawer: Container(color: Colors.white, child: CustomDrawer()),
-      bottomSheet: _buildBottomSheet(screenWidth),
+      // In NoteList build() method:
+      bottomSheet: NewNoteButton(
+        screenWidth: screenWidth,
+        defaultCategory: selectedCategory,
+        onRefresh: loadNotes, // ← Your refresh method
+      ),
       appBar: AppBar(
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
@@ -425,50 +427,6 @@ class _NoteListState extends State<NoteList> {
               screenWidth,
               hasActiveFilter,
             ),
-    );
-  }
-
-  Widget _buildBottomSheet(double screenWidth) {
-    return InkWell(
-      onTap: () => _showNoteDialog(
-        // Open paren here
-        Note(
-          title: '',
-          content: '',
-          createdAt: DateTime.now().toIso8601String(),
-          category: selectedCategory ?? 'Personal',
-        ), // Close paren here
-      ),
-      child: Container(
-        margin: EdgeInsets.all(10),
-        width: screenWidth * 0.7,
-        decoration: ShapeDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color.fromARGB(255, 153, 123, 16),
-              Color.fromARGB(255, 94, 3, 110),
-              Colors.purple,
-              Color.fromARGB(255, 241, 153, 147),
-              Colors.blue,
-            ],
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(8.0),
-          child: Text(
-            'New Note',
-            style: TextStyle(
-              fontSize: 20,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ),
     );
   }
 
@@ -671,7 +629,7 @@ class _NoteListState extends State<NoteList> {
                 if (selectedDate != null)
                   Chip(
                     label: Text(
-                      '${selectedDate!.day} ${_getMonthName(selectedDate!.month)}',
+                      '${selectedDate!.day} ${getMonthName(selectedDate!.month)}',
                     ),
                     onDeleted: _clearDateOnly,
                     deleteIcon: Icon(Icons.close, size: 18),
@@ -679,161 +637,32 @@ class _NoteListState extends State<NoteList> {
               ],
             ),
           ),
-        Expanded(
-          child: ListView.builder(
-            itemCount: displayNotes.length,
-            itemBuilder: (context, groupIndex) {
-              final dayKeys = displayNotes.keys.toList();
-              final dayKey = dayKeys[groupIndex];
-              final dayNotes = displayNotes[dayKey]!;
-              final dayDate = DateTime.parse(dayKey);
-              final formattedDay =
-                  dayDate.day == DateTime.now().day &&
-                      dayDate.month == DateTime.now().month &&
-                      dayDate.year == DateTime.now().year
-                  ? 'Today'
-                  : '${dayDate.day} ${_getMonthName(dayDate.month)} ${dayDate.year}';
+        GroupedNotesList(
+          displayNotes: displayNotes,
+          onDelete: _deleteNote,
+          // ✅ SPLIT onTap into two callbacks
+          onTapRegularNote: _showNoteDialog, // Regular notes → NoteFormWidget
+          // In home_page.dart - replace your onTapTodoNote:
+          onTapTodoNote: (note) async {
+            final result = await showDialog<Note>(
+              context: context,
+              builder: (dialogContext) => TodoSummaryDialog(note: note),
+            );
 
-              return Padding(
-                padding: EdgeInsets.all(8.0),
-                child: ExpansionTile(
-                  expandedAlignment: Alignment.centerLeft,
-                  initiallyExpanded: false,
-                  leading: CircleAvatar(
-                    radius: sizeFactor * 0.03,
-                    backgroundColor: Color.fromARGB(255, 244, 235, 220),
-                    child: Text(
-                      dayNotes.length.toString().padLeft(2, '0'),
-                      style: TextStyle(
-                        fontSize: titlefSize,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.purple[900],
-                      ),
-                    ),
-                  ),
-                  title: Center(
-                    child: Text(
-                      formattedDay,
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Color.fromARGB(255, 87, 5, 102),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  childrenPadding: EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  tilePadding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
-                  backgroundColor: Color.fromARGB(255, 244, 235, 220),
-                  collapsedBackgroundColor: Color.fromARGB(0, 58, 11, 11),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(12),
-                      bottomRight: Radius.circular(12),
-                    ),
-                    side: BorderSide(
-                      color: Color.fromARGB(255, 1, 72, 45),
-                      width: 1,
-                    ),
-                  ),
-                  children: dayNotes.map((note) {
-                    final cardHeight = isSmall
-                        ? screenWidth * 0.2
-                        : isMedium
-                        ? screenWidth * 0.14
-                        : screenWidth * 0.1;
-                    return Padding(
-                      padding: EdgeInsets.symmetric(vertical: 2),
-                      child: SizedBox(
-                        height: cardHeight,
-                        child: Dismissible(
-                          key: Key(note.id.toString()),
-                          confirmDismiss: (direction) async {
-                            final bool? confirmed = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.warning,
-                                      color: Colors.red[900],
-                                      size: 30,
-                                    ),
-                                    SizedBox(width: 10),
-                                    Expanded(
-                                      child: RichText(
-                                        text: TextSpan(
-                                          children: [
-                                            TextSpan(
-                                              text: 'Delete ',
-                                              style: TextStyle(
-                                                color: Colors.red,
-                                              ),
-                                            ),
-                                            TextSpan(
-                                              text: '${note.title}?',
-                                              style: TextStyle(
-                                                color: Colors.blue,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, false),
-                                    child: Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(context, true),
-                                    style: TextButton.styleFrom(
-                                      backgroundColor: Colors.pink,
-                                    ),
-                                    child: Text(
-                                      'Yes',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                            return confirmed == true;
-                          },
-                          onDismissed: (direction) => _deleteNote(note.id!),
-                          background: Container(
-                            height: cardHeight,
-                            color: Colors.red,
-                            alignment: Alignment.centerRight,
-                            padding: EdgeInsets.symmetric(horizontal: 20),
-                            child: Icon(Icons.delete, color: Colors.white),
-                          ),
-                          child: note.category == 'To-Do'
-                              ? TodoNoteCard(
-                                  note: note,
-                                  onTap: () => _showNoteDialog(note),
-                                  onToggleComplete: () =>
-                                      _toggleTodoComplete(note),
-                                )
-                              : NoteCard(
-                                  note: note,
-                                  onTap: () => _showNoteDialog(note),
-                                  onLongPress: () => _deleteNote(note.id!),
-                                ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              );
-            },
-          ),
+            if (result != null) {
+              await loadNotes(); // 🔥 refresh instantly
+            }
+          },
+
+          // Quick preview → Edit button → Full NoteFormWidget
+          onToggleComplete: _toggleTodoComplete,
+          onLongPress: (note) => _deleteNote(note.id!),
+          screenWidth: screenWidth,
+          sizeFactor: sizeFactor,
+          titlefSize: titlefSize,
+          isSmall: isSmall,
+          isMedium: isMedium,
+          getMonthName: getMonthName,
         ),
       ],
     );

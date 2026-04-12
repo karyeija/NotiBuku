@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:notibuku/widgets/note_form_widget.dart';
+import 'package:notibuku/forms/note_form_widget.dart';
 import 'package:notibuku/models/note.dart';
 
 class DetailsPage extends StatelessWidget {

@@ -9,9 +9,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
 
 class Helpers {
-
-
-  
   Future<bool> _requestStoragePermission() async {
     // Desktop: No permissions needed
     if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
@@ -238,4 +235,42 @@ class AutoNumberListFormatter extends TextInputFormatter {
     }
     return lines.length - 1;
   }
+
+  /// Month name formatter (for NoteList)
+  String getMonthName(int month) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return months[month - 1];
+  }
+}
+
+/// Month name formatter (for NoteList)
+String getMonthName(int month) {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return months[month - 1];
 }

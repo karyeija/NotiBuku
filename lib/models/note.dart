@@ -1,3 +1,5 @@
+import 'package:notibuku/models/to_do_item.dart';
+
 class Note {
   final int? id;
   final String title;
@@ -11,7 +13,9 @@ class Note {
   final double? titleFontSize;
   final double? contentFontSize;
   final String? category;
-  final bool? isCompleted; // NEW: For To-Do completion status
+  final bool? isCompleted;
+
+  final List<TodoItem> todoList;
 
   Note({
     this.id,
@@ -26,15 +30,55 @@ class Note {
     this.titleFontSize,
     this.contentFontSize,
     this.category,
-    this.isCompleted = false, //  Default false for new todos
+    this.isCompleted = false,
+    this.todoList = const [],
   });
+
+  // ✅ copyWith method (for immutability)
+  Note copyWith({
+    int? id,
+    String? title,
+    String? content,
+    String? createdAt,
+    String? color,
+    String? titleTextColor,
+    String? contentTextColor,
+    String? titleFontFamily,
+    String? contentFontFamily,
+    double? titleFontSize,
+    double? contentFontSize,
+    String? category,
+    bool? isCompleted,
+    List<TodoItem>? todoList,
+  }) {
+    return Note(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      content: content ?? this.content,
+      createdAt: createdAt ?? this.createdAt,
+      color: color ?? this.color,
+      titleTextColor: titleTextColor ?? this.titleTextColor,
+      contentTextColor: contentTextColor ?? this.contentTextColor,
+      titleFontFamily: titleFontFamily ?? this.titleFontFamily,
+      contentFontFamily: contentFontFamily ?? this.contentFontFamily,
+      titleFontSize: titleFontSize ?? this.titleFontSize,
+      contentFontSize: contentFontSize ?? this.contentFontSize,
+      category: category ?? this.category,
+      isCompleted: isCompleted ?? this.isCompleted,
+      todoList: todoList ?? this.todoList,
+    );
+  }
+
+  bool get isChecklist => todoList.isNotEmpty;
 
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
       'title': title,
       'content': content,
       'createdAt': createdAt,
-      'is_completed': isCompleted == true ? 1 : 0, //  Store as 0/1
+      if (isCompleted != null) 'is_completed': isCompleted == true ? 1 : 0,
+      if (todoList.isNotEmpty)
+        'todoList': todoList.map((item) => item.toMap()).toList(),
       if (id != null) 'id': id,
       if (color != null) 'color': color,
       if (titleTextColor != null) 'titleTextColor': titleTextColor,
@@ -49,11 +93,17 @@ class Note {
   }
 
   factory Note.fromMap(Map<String, dynamic> map) {
+    final List<TodoItem> list =
+        (map['todoList'] as List<dynamic>?)
+            ?.map((item) => TodoItem.fromMap(item as Map<String, dynamic>))
+            .toList() ??
+        <TodoItem>[];
+
     return Note(
       id: map['id'] as int?,
-      title: map['title'] as String? ?? '',
-      content: map['content'] as String? ?? '',
-      createdAt: map['createdAt'] as String? ?? '',
+      title: map['title'] as String,
+      content: map['content'] as String,
+      createdAt: map['createdAt'] as String,
       color: map['color'] as String?,
       titleTextColor: map['titleTextColor'] as String?,
       contentTextColor: map['contentTextColor'] as String?,
@@ -62,8 +112,8 @@ class Note {
       titleFontSize: map['titleFontSize']?.toDouble(),
       contentFontSize: map['contentFontSize']?.toDouble(),
       category: map['category'] as String?,
-      isCompleted:
-          (map['is_completed'] as int?) == 1, // Convert 1→true, else false
+      isCompleted: (map['is_completed'] as int?) == 1,
+      todoList: list,
     );
   }
 }
