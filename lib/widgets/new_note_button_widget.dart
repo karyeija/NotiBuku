@@ -17,6 +17,19 @@ class NewNoteButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final bool isLandscape = screenWidth > screenHeight;
+
+    final double buttonWidth = isLandscape
+        ? screenHeight * 0.70
+        : screenWidth * 0.70;
+
+    final double buttonHeight = isLandscape ? 32 : 40;
+
+    final double fontSize = isLandscape ? 16 : 20;
+    final double borderRadius = isLandscape ? 16 : 20;
+    final double margin = isLandscape ? 8 : 10;
+
     return InkWell(
       onTap: () async {
         await pushNoteForm(
@@ -31,8 +44,10 @@ class NewNoteButton extends StatelessWidget {
         onRefresh?.call(); // Refresh parent list
       },
       child: Container(
-        margin: const EdgeInsets.all(10),
-        width: screenWidth * 0.7,
+        alignment: Alignment.center,
+        margin: EdgeInsets.all(margin),
+        width: buttonWidth,
+        height: buttonHeight,
         decoration: ShapeDecoration(
           gradient: const LinearGradient(
             colors: [
@@ -44,20 +59,18 @@ class NewNoteButton extends StatelessWidget {
             ],
           ),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(borderRadius),
           ),
         ),
-        child: const Padding(
-          padding: EdgeInsets.all(8.0),
-          child: Text(
-            'New Note',
-            style: TextStyle(
-              fontSize: 20,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
+        child: Text(
+          'New Note',
+          style: TextStyle(
+            fontSize: fontSize,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            height: 1.0,
           ),
+          textAlign: TextAlign.center,
         ),
       ),
     );

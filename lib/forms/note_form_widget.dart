@@ -48,7 +48,7 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
   double contentFontSize = 16.0;
   ScreenshotController screenshotController = ScreenshotController();
 
-  // ✅ NEW: checklist portion
+  // NEW: checklist portion
   bool _isChecklistMode = false;
   List<TodoItem> _todoList = [];
 
@@ -63,7 +63,7 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
     contentColor = _hexToColor(widget.note?.contentTextColor ?? '#000000');
     selectedCategory = widget.note?.category ?? 'Personal';
 
-    // ✅ Load checklist state if this note has a todoList
+    // Load checklist state if this note has a todoList
     if (widget.note?.isChecklist == true) {
       _isChecklistMode = true;
       _todoList = List<TodoItem>.from(widget.note!.todoList);
@@ -75,8 +75,8 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
     _titleFocusNode.addListener(_handleFocusChange);
     _contentFocusNode.addListener(_handleFocusChange);
 
-    _titleController.text = title; // ✅ controller gets initial title
-    _contentController.text = content; // ✅ controller gets initial content
+    _titleController.text = title; // controller gets initial title
+    _contentController.text = content; // controller gets initial content
 
     _titleController.addListener(
       _updateSaveButtonEnablement,
@@ -169,11 +169,11 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
         prev.contentFontSize != contentFontSize;
   }
 
-  // ✅ ADD THIS - Update _isSaveButtonEnabled() to include todos
+  // ADD THIS - Update _isSaveButtonEnabled() to include todos
   bool _isSaveButtonEnabled() {
     if (widget.note?.id == null) return true; // New note always enabled
 
-    // ✅ Check title/content + checklist changes
+    // Check title/content + checklist changes
     return _isNoteChanged() || _hasTodoChanges();
   }
 
@@ -193,7 +193,7 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
     final messenger = ScaffoldMessenger.of(context);
 
     try {
-      // ✅ Push latest text into our fields before saving
+      // Push latest text into our fields before saving
       setState(() {
         title = _titleController.text;
         content = _contentController.text;
@@ -202,7 +202,7 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
       if (!_formKey.currentState!.validate()) return;
       _formKey.currentState!.save();
 
-      // ✅ Generate createdAt only for NEW notes
+      // Generate createdAt only for NEW notes
       final String createdAt = widget.note?.id == null
           ? DateTime.now().toIso8601String()
           : widget.note!.createdAt;
@@ -220,13 +220,13 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
         createdAt: createdAt,
         titleFontSize: titleFontSize,
         contentFontSize: contentFontSize,
-        todoList: List<TodoItem>.from(_todoList), // ✅ defensive copy
+        todoList: List<TodoItem>.from(_todoList), // defensive copy
       );
 
       if (widget.note?.id == null) {
         final newId = await DatabaseService.addNote(note);
 
-        if (!mounted) return; // ✅ FIX
+        if (!mounted) return; // FIX
 
         final noteWithId = note.copyWith(id: newId);
 
@@ -239,21 +239,21 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
         // EXISTING note (edit)
         await DatabaseService.updateNote(note);
 
-        if (!mounted) return; // ✅ FIX
+        if (!mounted) return; // FIX
 
-        // ✅ Update provider directly (no need for post frame)
+        // Update provider directly (no need for post frame)
         ref.read(todoNotesProvider.notifier).updateTodoNote(note);
 
-        // ✅ Safe to use context now
+        // Safe to use context now
         Navigator.pop(context, note);
       }
 
-      // ✅ Unfocus and exit editing UI
+      // Unfocus and exit editing UI
       _titleFocusNode.unfocus();
       _contentFocusNode.unfocus();
       setState(() => isEditing = false);
 
-      // ✅ Show success
+      // Show success
       messenger.showSnackBar(
         SnackBar(
           content: Text(
@@ -268,7 +268,7 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
       );
     } catch (e) {
       if (context.mounted) {
-        debugPrint('$e');
+        // debugPrint('$e');
         messenger.showSnackBar(
           SnackBar(
             content: Text('Save failed: $e'),
@@ -283,7 +283,7 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
     }
   }
 
-  // ✅ NEW: build checklist UI
+  // NEW: build checklist UI
   Widget _buildChecklistView() {
     return ListView.builder(
       itemCount: _todoList.length + 1,
@@ -353,8 +353,8 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
     );
   }
 
-  // ✅ Track if todo list changed
-bool _hasTodoChanges() {
+  // Track if todo list changed
+  bool _hasTodoChanges() {
     final original = widget.note?.todoList ?? [];
 
     final Map<String, TodoItem> oldMap = {
@@ -381,7 +381,7 @@ bool _hasTodoChanges() {
     return false;
   }
 
-  // ✅ Force save button update
+  // Force save button update
   void _checkTodoChanges() {
     setState(() {}); // Triggers _isSaveButtonEnabled() check
   }
@@ -438,12 +438,12 @@ bool _hasTodoChanges() {
         pixelRatio: 8.0, // 🔥 CRISP, PROFESSIONAL QUALITY
       );
 
-      debugPrint(' Ultra HD Image: ${image.length} bytes');
+      // debugPrint(' Ultra HD Image: ${image.length} bytes');
       if (mounted) {
         _showScreenshotDialog(image); // Your existing dialog
       }
     } catch (e) {
-      debugPrint('❌ Error: $e');
+      // debugPrint('❌ Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -611,7 +611,7 @@ bool _hasTodoChanges() {
                   },
                   isSaving: _isSaving,
                   isSaveButtonEnabled: _isSaveButtonEnabled(),
-                  isChecklistMode: _isChecklistMode, // ✅ IMPORTANT
+                  isChecklistMode: _isChecklistMode, // IMPORTANT
                 ),
               ],
             ),
@@ -631,7 +631,7 @@ bool _hasTodoChanges() {
                     fontSize: titleFontSize,
                   ),
                   if (showChecklist) ...[
-                    // ✅ Wrap checklist with GestureDetector for tap-to-edit
+                    // Wrap checklist with GestureDetector for tap-to-edit
                     Expanded(
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,

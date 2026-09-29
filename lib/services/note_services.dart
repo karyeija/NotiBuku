@@ -19,27 +19,28 @@ class DatabaseService {
     return _database!;
   }
 
+  static bool _ffiInitialized = false;
+
   Future<Database> initDatabase() async {
     try {
-      debugPrint('🔍 [DB] Initializing database...');
-
       if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-        sqfliteFfiInit();
-        databaseFactory = databaseFactoryFfi;
-        debugPrint('🖥️ [DB] FFI enabled for desktop');
+        if (!_ffiInitialized) {
+          sqfliteFfiInit();
+          databaseFactory = databaseFactoryFfi;
+          _ffiInitialized = true;
+        }
       }
 
-      Directory documentsDirectory = await getApplicationDocumentsDirectory();
-      final path = join(documentsDirectory.path, "notes_database.db");
-      debugPrint('📱 [DB] Database path: $path');
+      final documentsDirectory = await getApplicationDocumentsDirectory();
+
+      final path = join(documentsDirectory.path, 'notes_database.db');
 
       final db = await openDatabase(
         path,
-        version: 9, // v9 = add todoList column
+        version: 9,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
         onOpen: (db) async {
-          debugPrint(' [DB] Database opened successfully');
           await _verifyAndFixMigration(db);
           await _verifyTodoMigration(db);
           await _verifyTodoListMigration(db);
@@ -48,7 +49,6 @@ class DatabaseService {
 
       return db;
     } catch (e) {
-      debugPrint('❌ [DB] initDatabase FAILED: $e');
       rethrow;
     }
   }
@@ -63,19 +63,19 @@ class DatabaseService {
       final hasCategory = columns.any((column) => column['name'] == 'category');
 
       if (!hasCategory) {
-        debugPrint('🚨 [FIX] Category column MISSING - Adding NOW!');
+        // debugPrint('🚨 [FIX] Category column MISSING - Adding NOW!');
         await db.execute(
           'ALTER TABLE notes ADD COLUMN category TEXT DEFAULT "Personal"',
         );
         await db.execute('PRAGMA user_version = 7');
-        debugPrint(' [FIX] Category column added + version=7');
+        // debugPrint(' [FIX] Category column added + version=7');
       } else {
-        debugPrint(
-          ' [CHECK] Category column exists (${columns.length} total columns)',
-        );
+        // debugPrint(
+        //   ' [CHECK] Category column exists (${columns.length} total columns)',
+        // );
       }
     } catch (e) {
-      debugPrint('⚠️ [CHECK] Migration check failed: $e');
+      // debugPrint('⚠️ [CHECK] Migration check failed: $e');
     }
   }
 
@@ -87,16 +87,16 @@ class DatabaseService {
       );
 
       if (!hasIsCompleted) {
-        debugPrint('🚨 [FIX] is_completed column MISSING - Adding NOW!');
+        // debugPrint('🚨 [FIX] is_completed column MISSING - Adding NOW!');
         await db.execute(
           'ALTER TABLE notes ADD COLUMN is_completed INTEGER DEFAULT 0',
         );
-        debugPrint(' [FIX] is_completed column added');
+        // debugPrint(' [FIX] is_completed column added');
       } else {
-        debugPrint(' [CHECK] is_completed column exists');
+        // debugPrint(' [CHECK] is_completed column exists');
       }
     } catch (e) {
-      debugPrint('⚠️ [CHECK] Todo migration check failed: $e');
+      // debugPrint('⚠️ [CHECK] Todo migration check failed: $e');
     }
   }
 
@@ -106,16 +106,16 @@ class DatabaseService {
       final hasTodoList = columns.any((column) => column['name'] == 'todoList');
 
       if (!hasTodoList) {
-        debugPrint('🚨 [FIX] todoList column MISSING - Adding NOW!');
+        // debugPrint('🚨 [FIX] todoList column MISSING - Adding NOW!');
         await db.execute(
           'ALTER TABLE notes ADD COLUMN todoList TEXT DEFAULT \'[]\'',
         );
-        debugPrint(' [FIX] todoList column added');
+        // debugPrint(' [FIX] todoList column added');
       } else {
-        debugPrint(' [CHECK] todoList column exists');
+        // debugPrint(' [CHECK] todoList column exists');
       }
     } catch (e) {
-      debugPrint('⚠️ [CHECK] TodoList migration check failed: $e');
+      //  debugPrint('⚠️ [CHECK] TodoList migration check failed: $e');
     }
   }
 
@@ -124,7 +124,7 @@ class DatabaseService {
   // ---
 
   Future<void> _onCreate(Database db, int version) async {
-    debugPrint('🔨 [DB] Creating new database...');
+    // debugPrint('🔨 [DB] Creating new database...');
     await db.execute('''
       CREATE TABLE notes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -143,7 +143,7 @@ class DatabaseService {
         todoList TEXT DEFAULT '[]'  -- checklist JSON
       )
     ''');
-    debugPrint(' [DB] Table created with todoList column');
+    // debugPrint(' [DB] Table created with todoList column');
   }
 
   // ---
@@ -151,7 +151,7 @@ class DatabaseService {
   // ---
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    debugPrint('🔄 [DB] Migrating from v$oldVersion → v$newVersion');
+    // debugPrint('🔄 [DB] Migrating from v$oldVersion → v$newVersion');
 
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE notes ADD COLUMN color TEXT');
@@ -172,7 +172,7 @@ class DatabaseService {
     }
 
     if (oldVersion < 6) {
-      debugPrint('🔥 [DB] v6: Migrating textColor → separate colors...');
+      // debugPrint('🔥 [DB] v6: Migrating textColor → separate colors...');
       await db.execute('ALTER TABLE notes ADD COLUMN titleTextColor TEXT');
       await db.execute('ALTER TABLE notes ADD COLUMN contentTextColor TEXT');
 
@@ -183,30 +183,30 @@ class DatabaseService {
         WHERE textColor IS NOT NULL
       ''');
 
-      debugPrint(' [DB] v6: Migration complete!');
+      // debugPrint(' [DB] v6: Migration complete!');
     }
 
     if (oldVersion < 7) {
       await db.execute(
         'ALTER TABLE notes ADD COLUMN category TEXT DEFAULT "Personal"',
       );
-      debugPrint(' [DB] v7: Added category column');
+      // debugPrint(' [DB] v7: Added category column');
     }
 
     if (oldVersion < 8) {
-      debugPrint(' [DB] v8: Adding is_completed column...');
+      // debugPrint(' [DB] v8: Adding is_completed column...');
       await db.execute(
         'ALTER TABLE notes ADD COLUMN is_completed INTEGER DEFAULT 0',
       );
-      debugPrint(' [DB] v8: is_completed column added!');
+      // debugPrint(' [DB] v8: is_completed column added!');
     }
 
     if (oldVersion < 9) {
-      debugPrint(' [DB] v9: Adding todoList column...');
+      // debugPrint(' [DB] v9: Adding todoList column...');
       await db.execute(
         'ALTER TABLE notes ADD COLUMN todoList TEXT DEFAULT \'[]\'',
       );
-      debugPrint(' [DB] v9: todoList column added!');
+      // debugPrint(' [DB] v9: todoList column added!');
     }
   }
 
@@ -218,19 +218,19 @@ class DatabaseService {
     } catch (e) {
       final errorStr = e.toString();
       if (errorStr.contains('no column named category')) {
-        debugPrint('🚨 [EMERGENCY] Adding category column...');
+        // debugPrint('🚨 [EMERGENCY] Adding category column...');
         await db.execute(
           'ALTER TABLE notes ADD COLUMN category TEXT DEFAULT "Personal"',
         );
       }
       if (errorStr.contains('no column named is_completed')) {
-        debugPrint('🚨 [EMERGENCY] Adding is_completed column...');
+        // debugPrint('🚨 [EMERGENCY] Adding is_completed column...');
         await db.execute(
           'ALTER TABLE notes ADD COLUMN is_completed INTEGER DEFAULT 0',
         );
       }
       if (errorStr.contains('no column named todoList')) {
-        debugPrint('🚨 [EMERGENCY] Adding todoList column...');
+        //    debugPrint('🚨 [EMERGENCY] Adding todoList column...');
         await db.execute(
           'ALTER TABLE notes ADD COLUMN todoList TEXT DEFAULT \'[]\'',
         );
@@ -259,10 +259,10 @@ class DatabaseService {
         return Note.fromMap(e);
       }).toList();
 
-      debugPrint('📊 [SEARCH] Loaded ${notes.length} notes for filtering');
+      // debugPrint('📊 [SEARCH] Loaded ${notes.length} notes for filtering');
       return notes;
     } catch (e) {
-      debugPrint('❌ [SEARCH] getAllNotes FAILED: $e');
+      // debugPrint('❌ [SEARCH] getAllNotes FAILED: $e');
       return [];
     }
   }
@@ -292,10 +292,10 @@ class DatabaseService {
         return Note.fromMap(e);
       }).toList();
 
-      debugPrint('🔍 [SEARCH] Found ${notes.length} notes matching "$query"');
+      // debugPrint('🔍 [SEARCH] Found ${notes.length} notes matching "$query"');
       return notes;
     } catch (e) {
-      debugPrint('❌ [SEARCH] searchNotes FAILED: $e');
+      // debugPrint('❌ [SEARCH] searchNotes FAILED: $e');
       return [];
     }
   }
@@ -321,10 +321,10 @@ class DatabaseService {
         return Note.fromMap(e);
       }).toList();
 
-      debugPrint('📅 [DATE] Found ${notes.length} notes on $dateStr');
+      // debugPrint('📅 [DATE] Found ${notes.length} notes on $dateStr');
       return notes;
     } catch (e) {
-      debugPrint('❌ [DATE] getNotesByDate FAILED: $e');
+      // debugPrint('❌ [DATE] getNotesByDate FAILED: $e');
       return [];
     }
   }
@@ -339,12 +339,12 @@ class DatabaseService {
         grouped.putIfAbsent(dayKey, () => []).add(note);
       }
 
-      debugPrint(
-        '📅 [GROUP] Grouped ${allNotes.length} notes into ${grouped.length} days',
-      );
+      // debugPrint(
+      //   '📅 [GROUP] Grouped ${allNotes.length} notes into ${grouped.length} days',
+      // );
       return grouped;
     } catch (e) {
-      debugPrint('❌ [GROUP] getNotesGroupedByDay FAILED: $e');
+      // debugPrint('❌ [GROUP] getNotesGroupedByDay FAILED: $e');
       return {};
     }
   }
@@ -367,10 +367,10 @@ class DatabaseService {
       map['todoList'] = todoListJson;
 
       final id = await db.insert('notes', map);
-      debugPrint('💾 [SAVE] New note ID: $id');
+      // debugPrint('💾 [SAVE] New note ID: $id');
       return id;
     } catch (e) {
-      debugPrint('❌ [SAVE] addNote FAILED: $e');
+      // debugPrint('❌ [SAVE] addNote FAILED: $e');
       rethrow;
     }
   }
@@ -378,12 +378,15 @@ class DatabaseService {
   static Future<int> updateNote(Note note) async {
     try {
       final db = await DatabaseService.instance.database;
+
+      await _ensureSchemaReady(db);
+
       final Map<String, dynamic> map = note.toMap();
 
-      // Convert todoList to JSON string
       final todoListJson = map.containsKey('todoList')
           ? jsonEncode(map['todoList'])
           : '[]';
+
       map['todoList'] = todoListJson;
 
       final rowsAffected = await db.update(
@@ -392,10 +395,9 @@ class DatabaseService {
         where: 'id = ?',
         whereArgs: [note.id],
       );
-      debugPrint('🔄 [SAVE] Updated note ${note.id}: $rowsAffected rows');
+
       return rowsAffected;
     } catch (e) {
-      debugPrint('❌ [SAVE] updateNote FAILED: $e');
       rethrow;
     }
   }
@@ -409,9 +411,9 @@ class DatabaseService {
         where: 'id = ?',
         whereArgs: [id],
       );
-      debugPrint(' [TODO] Toggled note $id completion: $isCompleted');
+      // debugPrint(' [TODO] Toggled note $id completion: $isCompleted');
     } catch (e) {
-      debugPrint('❌ [TODO] toggleNoteCompletion FAILED: $e');
+      // debugPrint('❌ [TODO] toggleNoteCompletion FAILED: $e');
       rethrow;
     }
   }
@@ -424,10 +426,10 @@ class DatabaseService {
         where: 'id = ?',
         whereArgs: [id],
       );
-      debugPrint('🗑️ [DELETE] Note $id: $rowsAffected rows');
+      //  debugPrint('🗑️ [DELETE] Note $id: $rowsAffected rows');
       return rowsAffected;
     } catch (e) {
-      debugPrint('❌ [DELETE] deleteNote FAILED: $e');
+      // debugPrint('❌ [DELETE] deleteNote FAILED: $e');
       rethrow;
     }
   }
@@ -441,7 +443,7 @@ class DatabaseService {
   // ---
 
   static Future<void> debugDumpAll() async {
-    debugPrint('🔍 [DEBUG] === FULL DATABASE DUMP ===');
+    // debugPrint('🔍 [DEBUG] === FULL DATABASE DUMP ===');
     final db = await DatabaseService.instance.database;
 
     final tables = await db.rawQuery(
@@ -450,7 +452,7 @@ class DatabaseService {
     debugPrint('📋 Tables: ${tables.map((t) => t['name']).toList()}');
 
     final notes = await getAllNotes();
-    debugPrint('📝 Total notes: ${notes.length}');
+    // debugPrint('📝 Total notes: ${notes.length}');
     for (int i = 0; i < notes.length && i < 5; i++) {
       final note = notes[i];
       debugPrint(

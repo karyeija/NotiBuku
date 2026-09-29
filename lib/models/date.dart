@@ -13,9 +13,9 @@ class FormatDate {
     }
 
     // Otherwise return formatted month and day
-    final month = DateFormat.MMM().format(dt);
-    final day = DateFormat.d().format(dt);
-    return '$month $day';
+    final month = DateFormat.M().format(dt).toString().padLeft(2, '0');
+    final day = DateFormat.d().format(dt).toString().padLeft(2, '0');
+    return '$day/$month';
   }
 
   static String day(dynamic date) {
