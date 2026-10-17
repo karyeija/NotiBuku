@@ -13,7 +13,7 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
-    // load keystore properties if available
+    // Load keystore properties if available
     val keystorePropertiesFile = rootProject.file("key.properties")
     val keystoreProperties = Properties().apply {
         if (keystorePropertiesFile.exists()) {
@@ -26,15 +26,18 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(
+                org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+            )
+        }
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        // TODO: Specify your own unique Application ID.
         applicationId = "com.aikodeware.notibuku"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -47,15 +50,25 @@ android {
             val keyPassword = keystoreProperties.getProperty("keyPassword")
             val storePassword = keystoreProperties.getProperty("storePassword")
             val storeFilePath = keystoreProperties.getProperty("storeFile")
-            
-            if (keyAlias != null && keyPassword != null && storePassword != null && storeFilePath != null) {
+
+            if (
+                keyAlias != null &&
+                keyPassword != null &&
+                storePassword != null &&
+                storeFilePath != null
+            ) {
                 this.keyAlias = keyAlias
                 this.keyPassword = keyPassword
                 this.storePassword = storePassword
                 this.storeFile = file(storeFilePath)
             } else {
-                logger.warn("WARNING: Keystore properties incomplete. Build will fail if signing is required.")
-                logger.warn("Ensure all properties are set in android/key.properties")
+                logger.warn(
+                    "WARNING: Keystore properties incomplete. " +
+                        "Build will fail if signing is required."
+                )
+                logger.warn(
+                    "Ensure all properties are set in android/key.properties"
+                )
             }
         }
     }
@@ -64,7 +77,12 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+
             signingConfig = signingConfigs.getByName("release")
         }
     }

@@ -93,31 +93,32 @@ class TodoSummaryDialog extends StatelessWidget {
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text('Close'),
-        ),
-        ElevatedButton.icon(
-          onPressed: () async {
-            Navigator.pop(context);
-            // ✅ Open full editor
-           final result = await Navigator.push<Note>(
-              context,
-              MaterialPageRoute(
-                builder: (context) => NoteFormWidget(note: note),
-              ),
-            );
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Close'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(context);
 
-            if (result != null && context.mounted) {
-              Navigator.pop(context, result); // 🔥 bubble update up
-            }
+                final result = await Navigator.push<Note>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => NoteFormWidget(note: note),
+                  ),
+                );
 
-            if (result != null && context.mounted) {
-              Navigator.pop(context, result); // 🔥 bubble update up
-            }
-          },
-          icon: Icon(Icons.edit),
-          label: Text('Edit Tasks'),
+                if (result != null && context.mounted) {
+                  Navigator.pop(context, result);
+                }
+              },
+              icon: Icon(Icons.edit),
+              label: Text('Edit Tasks'),
+            ),
+          ],
         ),
       ],
     );

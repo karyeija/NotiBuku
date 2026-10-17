@@ -29,8 +29,8 @@ class TodoNoteCard extends StatelessWidget {
     final titleColor = _hexToColor(note.titleTextColor ?? '#000000');
     final screenWidth = Func().screenWidth(context);
 
-    final bool isSmall = screenWidth <= 322;
-    final bool isMedium = screenWidth > 322 && screenWidth <= 700;
+    final bool isSmall = screenWidth <= 320;
+    final bool isMedium = screenWidth > 320 && screenWidth <= 700;
 
     final double sizeFactor = getSizeFactor(context);
     final double contentfSize = sizeFactor * 0.02;
@@ -52,11 +52,11 @@ class TodoNoteCard extends StatelessWidget {
           Container(
             alignment: Alignment.topLeft,
             height: isSmall
-                ? screenWidth * 0.32
+                ? screenWidth * 0.3
                 : isMedium
-                ? screenWidth * 0.4
-                : screenWidth * 0.15,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ? screenWidth * 0.35
+                : screenWidth * 0.12,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
             decoration: BoxDecoration(
               color: noteColor,
               borderRadius: BorderRadius.circular(12),

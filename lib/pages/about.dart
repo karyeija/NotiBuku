@@ -5,7 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 const String appName = 'NotiBuku'; //the app name
 const String appDescription =
     'A handy digital note taking application'; //a short description
-const String appVersion = '1.0.0'; //the app version eg 1.0.0
+const String appVersion = '1.0.1'; //the app version eg 1.0.0
 const String developerName = 'aikodeware Ltd'; //Your name
 const String developerEmail = 'aikodeware@gmail.com'; //Your email
 const String logoPath = 'assets/icons/logo.png'; //path/to/your/icon

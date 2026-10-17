@@ -4,11 +4,12 @@ import 'package:notibuku/pages/details_page.dart';
 import 'package:notibuku/services/note_services.dart';
 import 'package:notibuku/services/sizefactor.dart';
 import 'package:notibuku/utils/helpers.dart';
+import 'package:notibuku/widgets/appbar_category.dart';
+import 'package:notibuku/widgets/categorycard.dart';
 import 'package:notibuku/widgets/drawer.dart';
-import 'package:animated_text_kit2/animated_text_kit2.dart';
+
 import 'package:notibuku/widgets/new_note_button_widget.dart';
-import 'package:notibuku/widgets/notes/grouped_notes_list_widget.dart';
-import 'package:notibuku/widgets/screenshot/todo_summary.dart';
+import 'package:notibuku/widgets/noteslist.dart';
 
 class NoteList extends StatefulWidget {
   const NoteList({super.key});
@@ -365,7 +366,22 @@ class _NoteListState extends State<NoteList> {
     if (showCategoryView) {
       return Scaffold(
         drawer: Container(color: Colors.white, child: CustomDrawer()),
-        appBar: _buildCategoryAppBar(),
+        appBar: NotiBukuCategoryAppBar(
+          isSearching: isSearching,
+          searchController: _searchController,
+          onSearchPressed: () {
+            setState(() {
+              isSearching = true;
+            });
+          },
+          onClearSearch: () {
+            _searchController.clear();
+
+            setState(() {
+              isSearching = false;
+            });
+          },
+        ),
         body: LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth;
@@ -458,10 +474,11 @@ class _NoteListState extends State<NoteList> {
 
                       final noteCount = _getCategoryNoteCount(category.name);
 
-                      return _buildCategoryCard(
-                        category,
-                        noteCount,
-                        isLandscape,
+                      return NotiBukuCategoryCard(
+                        category: category,
+                        noteCount: noteCount,
+                        isLandscape: isLandscape,
+                        onTap: () => _selectCategory(category.name),
                       );
                     }, childCount: categories.length),
                   ),
@@ -514,7 +531,7 @@ class _NoteListState extends State<NoteList> {
             Icon(
               Icons.label_important_outline,
               color: Colors.amber[200],
-              size: 20,
+              size: isLandscape ? 20 : 14,
             ),
 
             const SizedBox(width: 8),
@@ -526,7 +543,7 @@ class _NoteListState extends State<NoteList> {
                 Text(
                   selectedCategory ?? 'Notes',
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -621,357 +638,35 @@ class _NoteListState extends State<NoteList> {
                 style: TextStyle(fontSize: 18, color: Colors.grey[600]),
               ),
             )
-          : _buildNotesList(
-              displayNotes,
-              sizeFactor,
-              titlefSize,
-              isSmall,
-              isMedium,
-              screenWidth,
-              hasActiveFilter,
-              isLandscape,
-            ),
+          : NotiBukuNotesList(
+              displayNotes: displayNotes,
+              sizeFactor: sizeFactor,
+              titlefSize: titlefSize,
+              isSmall: isSmall,
+              isMedium: isMedium,
+              screenWidth: screenWidth,
+              hasActiveFilter: hasActiveFilter,
+              isLandscape: isLandscape,
+              searchText: searchText,
+              selectedDate: selectedDate,
+              searchController: _searchController,
+              applyFilters: _applyFilters,
+              clearDateOnly: _clearDateOnly,
+              deleteNote: _deleteNote,
+              showNoteDialog: _showNoteDialog,
+              toggleTodoComplete: _toggleTodoComplete,
+              loadNotes: loadNotes,
+              getMonthName: getMonthName,
+            )
     );
   }
 
-  // ================================================================
-  // CATEGORY APP BAR
-  // ================================================================
-
-  AppBar _buildCategoryAppBar() {
-    return AppBar(
-      title: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Icon(
-            Icons.menu_book_sharp,
-            color: Colors.amber[200],
-            size: isSearching ? 20 : 30,
-          ),
-
-          const SizedBox(width: 8),
-
-          Expanded(
-            child: AnimatedTextKit2.Rainbow(
-              repeat: true,
-              text: 'NotiBuku',
-              duration: const Duration(seconds: 10),
-              textStyle: const TextStyle(
-                color: Color.fromARGB(255, 87, 5, 102),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-
-      titleTextStyle: TextStyle(
-        fontFamily: 'ALGER',
-        fontSize: isSearching ? 18 : 30,
-        color: Colors.white,
-        fontWeight: FontWeight.bold,
-      ),
-
-      actions: [
-        isSearching
-            ? SizedBox(
-                width: 150,
-                child: TextField(
-                  controller: _searchController,
-                  autofocus: true,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.only(top: 12),
-                    hintText: 'Search notes...',
-                    hintStyle: const TextStyle(color: Colors.white60),
-                    border: InputBorder.none,
-                    suffixIcon: IconButton(
-                      color: Colors.white,
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        _searchController.clear();
-
-                        setState(() {
-                          isSearching = false;
-                        });
-                      },
-                    ),
-                  ),
-                ),
-              )
-            : IconButton(
-                icon: const Icon(Icons.search),
-                onPressed: () {
-                  setState(() {
-                    isSearching = true;
-                  });
-                },
-              ),
-      ],
-    );
-  }
-
-  // ================================================================
-  // CATEGORY CARD
-  //
-  // IMPORTANT:
-  // No fixed height here.
-  //
-  // SliverGrid determines the outer card dimensions.
-  // Scale is only used for the contents.
-  // ================================================================
-
-  Widget _buildCategoryCard(
-    CategoryContainer category,
-    int noteCount,
-    bool isLandscape,
-  ) {
-    final double cardWidth = isLandscape ? 100 : 120;
-
-    final double iconContainerSize = isLandscape ? 34 : 40;
-    final double iconSize = isLandscape ? 20 : 22;
-    final double titleSize = isLandscape ? 13 : 14;
-    final double countSize = isLandscape ? 10 : 11;
-
-    return GestureDetector(
-      onTap: () => _selectCategory(category.name),
-
-      child: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: cardWidth),
-
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-
-            width: cardWidth,
-
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  category.color.withValues(alpha: 0.10),
-                  category.color.withValues(alpha: 0.05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-
-              borderRadius: BorderRadius.circular(16),
-
-              border: Border.all(
-                color: category.color.withValues(alpha: 0.30),
-                width: 1.5,
-              ),
-
-              boxShadow: [
-                BoxShadow(
-                  color: category.color.withValues(alpha: 0.20),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-
-            child: Padding(
-              padding: EdgeInsets.all(isLandscape ? 2 : 4),
-
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-
-                children: [
-                  Container(
-                    alignment: Alignment.center,
-
-                    width: iconContainerSize,
-                    height: iconContainerSize,
-
-                    decoration: BoxDecoration(
-                      color: category.color.withValues(alpha: 0.20),
-
-                      shape: BoxShape.circle,
-
-                      border: Border.all(
-                        color: category.color.withValues(alpha: 0.40),
-                        width: 1.5,
-                      ),
-                    ),
-
-                    child: Icon(
-                      category.icon,
-                      size: iconSize,
-                      color: category.color,
-                    ),
-                  ),
-
-                  SizedBox(height: isLandscape ? 4 : 6),
-
-                  Text(
-                    category.name,
-
-                    style: TextStyle(
-                      fontSize: titleSize,
-                      fontWeight: FontWeight.bold,
-                      color: category.color,
-                      height: 1.1,
-                    ),
-
-                    textAlign: TextAlign.center,
-
-                    maxLines: 1,
-
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  SizedBox(height: isLandscape ? 3 : 5),
-
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: category.color.withValues(alpha: 0.20),
-
-                      shape: BoxShape.circle,
-
-                      border: Border.all(
-                        color: category.color.withValues(alpha: 0.15),
-                        width: 1,
-                      ),
-                    ),
-
-                    child: Text(
-                      '$noteCount',
-
-                      style: TextStyle(
-                        fontSize: countSize,
-                        color: category.color,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   // ================================================================
   // NOTES LIST
   // ================================================================
 
-  Widget _buildNotesList(
-    Map<String, List<Note>> displayNotes,
-    double sizeFactor,
-    double titlefSize,
-    bool isSmall,
-    bool isMedium,
-    double screenWidth,
-    bool hasActiveFilter,
-    bool isLandscape,
-  ) {
-    return Column(
-      children: [
-        if (hasActiveFilter)
-          Container(
-            width: double.infinity,
 
-            padding: EdgeInsets.symmetric(
-              horizontal: isLandscape ? 16 : 8,
-              vertical: isLandscape ? 4 : 8,
-            ),
-
-            child: Wrap(
-              spacing: isLandscape ? 6 : 8,
-              runSpacing: isLandscape ? 4 : 8,
-
-              children: [
-                if (searchText.isNotEmpty)
-                  Chip(
-                    label: Text(
-                      'Search: $searchText',
-                      style: TextStyle(fontSize: isLandscape ? 12 : 14),
-                    ),
-
-                    visualDensity: isLandscape
-                        ? const VisualDensity(horizontal: -2, vertical: -2)
-                        : VisualDensity.standard,
-
-                    onDeleted: () {
-                      searchText = '';
-
-                      _searchController.clear();
-
-                      _applyFilters();
-                    },
-
-                    deleteIcon: Icon(Icons.close, size: isLandscape ? 16 : 18),
-                  ),
-
-                if (selectedDate != null)
-                  Chip(
-                    label: Text(
-                      '${selectedDate!.day} '
-                      '${getMonthName(selectedDate!.month)}',
-
-                      style: TextStyle(fontSize: isLandscape ? 12 : 14),
-                    ),
-
-                    visualDensity: isLandscape
-                        ? const VisualDensity(horizontal: -2, vertical: -2)
-                        : VisualDensity.standard,
-
-                    onDeleted: _clearDateOnly,
-
-                    deleteIcon: Icon(Icons.close, size: isLandscape ? 16 : 18),
-                  ),
-              ],
-            ),
-          ),
-
-        // ------------------------------------------------------------
-        // GROUPED NOTES
-        // ------------------------------------------------------------
-        GroupedNotesList(
-          displayNotes: displayNotes,
-
-          onDelete: _deleteNote,
-
-          onTapRegularNote: _showNoteDialog,
-
-          onTapTodoNote: (note) async {
-            final result = await showDialog<Note>(
-              context: context,
-
-              builder: (dialogContext) => TodoSummaryDialog(note: note),
-            );
-
-            if (result != null) {
-              await loadNotes();
-            }
-          },
-
-          onToggleComplete: _toggleTodoComplete,
-
-          onLongPress: (note) => _deleteNote(note.id!),
-
-          screenWidth: screenWidth,
-
-          sizeFactor: sizeFactor,
-
-          titlefSize: titlefSize,
-
-          isSmall: isSmall,
-
-          isMedium: isMedium,
-
-          getMonthName: getMonthName,
-
-          isLandscape: isLandscape,
-        ),
-      ],
-    );
-  }
 }
 
 // ====================================================================

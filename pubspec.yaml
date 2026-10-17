@@ -2,7 +2,7 @@ name: notibuku
 description: "A new handy notebook."
 publish_to: 'none'
 
-version: 1.0.1+2
+version: 1.0.0+10
 
 environment:
   sdk: ^3.9.2
@@ -26,6 +26,7 @@ dependencies:
   media_gallery_saver: ^1.3.4
   flutter_markdown_plus: ^1.0.7
   flutter_riverpod: 2.5.1
+  material_ui: ^0.0.1
 
 dev_dependencies:
   flutter_test:

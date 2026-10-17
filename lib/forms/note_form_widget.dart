@@ -283,6 +283,61 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
     }
   }
 
+  Future<void> _updateTodoCompletion(int index, bool isCompleted) async {
+    if (index < 0 || index >= _todoList.length) return;
+
+    final item = _todoList[index];
+
+    setState(() {
+      _todoList[index] = TodoItem(
+        id: item.id,
+        text: item.text,
+        isCompleted: isCompleted,
+      );
+
+      isEditing = true;
+    });
+
+    // New notes have no database ID yet.
+    // Their checklist will be saved when the user saves the note.
+    final noteId = widget.note?.id;
+    if (noteId == null) return;
+
+    final updatedNote = Note(
+      id: noteId,
+      title: _titleController.text,
+      content: _contentController.text,
+      color: _colorToHex(noteColor),
+      titleTextColor: _colorToHex(titleColor),
+      contentTextColor: _colorToHex(contentColor),
+      titleFontFamily: titleFontFamily,
+      contentFontFamily: contentFontFamily,
+      category: widget.note?.category ?? 'Personal',
+      createdAt: widget.note!.createdAt,
+      titleFontSize: titleFontSize,
+      contentFontSize: contentFontSize,
+      todoList: List<TodoItem>.from(_todoList),
+    );
+
+    try {
+      await DatabaseService.updateNote(updatedNote);
+
+      if (!mounted) return;
+
+      // Update the Riverpod state so the change appears immediately.
+      ref.read(todoNotesProvider.notifier).updateTodoNote(updatedNote);
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save task progress: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   // NEW: build checklist UI
   Widget _buildChecklistView() {
     return ListView.builder(
@@ -305,15 +360,8 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
           leading: Checkbox(
             value: item.isCompleted,
             onChanged: (value) {
-              setState(() {
-                _todoList[index] = TodoItem(
-                  id: item.id,
-                  text: item.text,
-                  isCompleted: value ?? false,
-                );
-                isEditing = true;
-              });
-              _checkTodoChanges();
+              if (value == null) return;
+              _updateTodoCompletion(index, value);
             },
           ),
 
