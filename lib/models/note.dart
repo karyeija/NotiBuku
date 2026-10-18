@@ -14,7 +14,7 @@ class Note {
   final double? contentFontSize;
   final String? category;
   final bool? isCompleted;
-
+  final bool isChecklist;
   final List<TodoItem> todoList;
 
   Note({
@@ -31,10 +31,10 @@ class Note {
     this.contentFontSize,
     this.category,
     this.isCompleted = false,
+    this.isChecklist = false,
     this.todoList = const [],
   });
 
-  // ✅ copyWith method (for immutability)
   Note copyWith({
     int? id,
     String? title,
@@ -49,6 +49,7 @@ class Note {
     double? contentFontSize,
     String? category,
     bool? isCompleted,
+    bool? isChecklist,
     List<TodoItem>? todoList,
   }) {
     return Note(
@@ -65,20 +66,19 @@ class Note {
       contentFontSize: contentFontSize ?? this.contentFontSize,
       category: category ?? this.category,
       isCompleted: isCompleted ?? this.isCompleted,
+      isChecklist: isChecklist ?? this.isChecklist,
       todoList: todoList ?? this.todoList,
     );
   }
 
-  bool get isChecklist => todoList.isNotEmpty;
-
   Map<String, dynamic> toMap() {
-    final map = <String, dynamic>{
+    return {
       'title': title,
       'content': content,
       'createdAt': createdAt,
-      if (isCompleted != null) 'is_completed': isCompleted == true ? 1 : 0,
-      if (todoList.isNotEmpty)
-        'todoList': todoList.map((item) => item.toMap()).toList(),
+      'is_completed': isCompleted == true ? 1 : 0,
+      'isChecklist': isChecklist ? 1 : 0,
+      'todoList': todoList.map((item) => item.toMap()).toList(),
       if (id != null) 'id': id,
       if (color != null) 'color': color,
       if (titleTextColor != null) 'titleTextColor': titleTextColor,
@@ -89,15 +89,20 @@ class Note {
       if (contentFontSize != null) 'contentFontSize': contentFontSize,
       if (category != null) 'category': category,
     };
-    return map;
   }
 
   factory Note.fromMap(Map<String, dynamic> map) {
     final List<TodoItem> list =
         (map['todoList'] as List<dynamic>?)
-            ?.map((item) => TodoItem.fromMap(item as Map<String, dynamic>))
+            ?.map(
+              (item) =>
+                  TodoItem.fromMap(Map<String, dynamic>.from(item as Map)),
+            )
             .toList() ??
         <TodoItem>[];
+
+    // Preserve compatibility with older saved notes.
+    final rawChecklist = map['isChecklist'];
 
     return Note(
       id: map['id'] as int?,
@@ -112,7 +117,8 @@ class Note {
       titleFontSize: map['titleFontSize']?.toDouble(),
       contentFontSize: map['contentFontSize']?.toDouble(),
       category: map['category'] as String?,
-      isCompleted: (map['is_completed'] as int?) == 1,
+      isCompleted: map['is_completed'] == 1 || map['is_completed'] == true,
+      isChecklist: rawChecklist == 1 || rawChecklist == true || list.isNotEmpty,
       todoList: list,
     );
   }

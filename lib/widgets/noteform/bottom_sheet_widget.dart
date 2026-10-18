@@ -7,7 +7,7 @@ class NoteBottomSheet extends StatelessWidget {
 
   final bool isSaving;
   final bool isSaveButtonEnabled;
-  final bool isChecklistMode; // ✅ NEW
+  final bool isChecklistMode; // Indicates if the note is in checklist mode
 
   const NoteBottomSheet({
     super.key,
@@ -22,19 +22,22 @@ class NoteBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: 40,
       width: double.infinity,
       decoration: const BoxDecoration(
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(12),
-          topRight: Radius.circular(12),
+          topLeft: Radius.circular(0),
+          topRight: Radius.circular(0),
         ),
-        color: Colors.green,
-        boxShadow: [BoxShadow(blurRadius: 10, color: Colors.black26)],
+        color: Color.fromARGB(166, 87, 145, 116),
+        boxShadow: [
+          BoxShadow(blurRadius: 10, color: Color.fromARGB(66, 53, 28, 28)),
+        ],
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             // CANCEL
             ElevatedButton(
@@ -43,6 +46,7 @@ class NoteBottomSheet extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
+                padding: EdgeInsets.zero,
               ),
               onPressed: onCancel,
               child: const Text(
@@ -54,11 +58,20 @@ class NoteBottomSheet extends StatelessWidget {
             // SAVE
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green[700],
+                backgroundColor: !isSaveButtonEnabled
+                    ? const Color.fromARGB(
+                        255,
+                        119,
+                        142,
+                        56,
+                      ) // Green: changes available
+                    : Colors.purple, // Purple: no changes
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
+                padding: EdgeInsets.zero,
               ),
+
               onPressed: isSaving || !isSaveButtonEnabled ? null : onSave,
               child: isSaveButtonEnabled
                   ? const Text('Save', style: TextStyle(color: Colors.white))

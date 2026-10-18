@@ -23,23 +23,31 @@ class TodoNotesNotifier extends StateNotifier<Map<String, Note>> {
   /// ==============================
   /// ➕ ADD NOTE
   /// ==============================
-  Future<void> addTodoNote(Note note) async {
-    await DatabaseService.addNote(note);
+  void addTodoNote(Note note) {
+    final id = note.id;
 
-    state = {...state, note.id.toString(): note};
+    if (id == null) {
+      throw ArgumentError('Cannot add an unsaved note to provider state.');
+    }
+
+    state = {...state, id.toString(): note};
   }
 
   /// ==============================
-  /// ✏️ UPDATE NOTE (NO FULL RELOAD)
+  /// UPDATE NOTE (NO FULL RELOAD)
   /// ==============================
-  Future<void> updateTodoNote(Note updatedNote) async {
-    await DatabaseService.updateNote(updatedNote);
+  void updateTodoNote(Note updatedNote) {
+    final id = updatedNote.id;
 
-    state = {...state, updatedNote.id.toString(): updatedNote};
+    if (id == null) {
+      throw ArgumentError('Cannot update a note without an ID.');
+    }
+
+    state = {...state, id.toString(): updatedNote};
   }
 
   /// ==============================
-  /// ❌ DELETE NOTE
+  /// DELETE NOTE
   /// ==============================
   Future<void> deleteTodoNote(String noteId) async {
     await DatabaseService.deleteNote(int.parse(noteId));
@@ -51,7 +59,7 @@ class TodoNotesNotifier extends StateNotifier<Map<String, Note>> {
   }
 
   /// ==============================
-  /// 📌 GET NOTE BY ID (FAST O(1))
+  /// GET NOTE BY ID (FAST O(1))
   /// ==============================
   Note? getById(String id) {
     return state[id];

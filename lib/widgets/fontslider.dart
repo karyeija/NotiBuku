@@ -52,7 +52,7 @@ class FontSizeSlider extends ConsumerWidget {
         .clamp(computedMinFontSize, computedMaxFontSize)
         .round();
 
-    final selectorHeight = sizeFactor * 0.08;
+    final selectorHeight = sizeFactor * 0.06;
     final selectorWidth = sizeFactor * 0.23;
 
     // Use containerColor directly - no state management
@@ -76,7 +76,7 @@ class FontSizeSlider extends ConsumerWidget {
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           // Minus button
           GestureDetector(
@@ -103,7 +103,7 @@ class FontSizeSlider extends ConsumerWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: Colors.deepPurple,
+              color: const Color.fromARGB(255, 214, 207, 226),
               height: 1.0,
             ),
           ),

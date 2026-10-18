@@ -2,7 +2,7 @@ name: notibuku
 description: "A new handy notebook."
 publish_to: 'none'
 
-version: 1.0.0+10
+version: 1.0.0+11
 
 environment:
   sdk: ^3.9.2

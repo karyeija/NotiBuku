@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:notibuku/models/note.dart';
 import 'package:notibuku/services/sizefactor.dart';
 import 'package:notibuku/models/date.dart';
-// ✅ Add this import
+//  Add this import
 
 class NoteCard extends StatelessWidget {
   final Note note;
@@ -115,7 +115,7 @@ class NoteCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // ✅ TITLE - shows task count for todo notes
+                      // TITLE - shows task count for todo notes
                       FittedBox(
                         child: Text(
                           note.title.isEmpty
@@ -138,11 +138,11 @@ class NoteCard extends StatelessWidget {
                         ),
                       ),
 
-                      // ✅ CONTENT - shows task summary for todo notes
+                      //   CONTENT - shows task summary for todo notes
                       FittedBox(
                         child: Text(
                           _isTodoNote
-                              ? '${_getPendingTasks()} pending • ${_getTotalTasks() - _getPendingTasks()} done' // ✅ Task summary
+                              ? '${_getPendingTasks()} pending • ${_getTotalTasks() - _getPendingTasks()} done' // Task summary
                               : note.content.split('\n').first.isEmpty
                               ? 'No content'
                               : note.content.split('\n').first,
@@ -182,7 +182,7 @@ class NoteCard extends StatelessWidget {
             ),
           ),
 
-          // - Top-right corner✅ 
+          // - Top-right corner✅
           if (_isTodoNote)
             Positioned(
               top: 6,
@@ -190,7 +190,7 @@ class NoteCard extends StatelessWidget {
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha:  0.9),
+                  color: Colors.green.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(

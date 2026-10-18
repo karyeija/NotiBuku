@@ -38,7 +38,7 @@ class NoteTitleField extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
           validator: (v) => v == null || v.isEmpty ? "Required" : null,
-          // ✅ REMOVE the onChanged override
+          // REMOVE the onChanged override
           maxLines: 1,
           textInputAction: TextInputAction.next,
         ),

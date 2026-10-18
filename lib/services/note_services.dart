@@ -1,134 +1,67 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
 import 'package:notibuku/models/note.dart';
 
 class DatabaseService {
   DatabaseService._privateConstructor();
+
   static final DatabaseService instance = DatabaseService._privateConstructor();
 
   static Database? _database;
+
   static Database? get instanceDb => _database;
 
+  static const int _databaseVersion = 10;
+  static const String _databaseName = 'notes_database.db';
+  static const String _notesTable = 'notes';
+
+  static bool _ffiInitialized = false;
+
   Future<Database> get database async {
-    if (_database != null) return _database!;
+    if (_database != null && _database!.isOpen) {
+      return _database!;
+    }
+
     _database = await initDatabase();
     return _database!;
   }
 
-  static bool _ffiInitialized = false;
-
   Future<Database> initDatabase() async {
-    try {
-      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-        if (!_ffiInitialized) {
-          sqfliteFfiInit();
-          databaseFactory = databaseFactoryFfi;
-          _ffiInitialized = true;
-        }
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      if (!_ffiInitialized) {
+        sqfliteFfiInit();
+        databaseFactory = databaseFactoryFfi;
+        _ffiInitialized = true;
       }
-
-      final documentsDirectory = await getApplicationDocumentsDirectory();
-
-      final path = join(documentsDirectory.path, 'notes_database.db');
-
-      final db = await openDatabase(
-        path,
-        version: 9,
-        onCreate: _onCreate,
-        onUpgrade: _onUpgrade,
-        onOpen: (db) async {
-          await _verifyAndFixMigration(db);
-          await _verifyTodoMigration(db);
-          await _verifyTodoListMigration(db);
-        },
-      );
-
-      return db;
-    } catch (e) {
-      rethrow;
     }
+
+    final documentsDirectory = await getApplicationDocumentsDirectory();
+    final dbPath = join(documentsDirectory.path, _databaseName);
+
+    return openDatabase(
+      dbPath,
+      version: _databaseVersion,
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
+      onOpen: _onOpen,
+    );
   }
 
-  // ---
-  // MIGRATION CHECKERS (safe emergency adds)
-  // ---
-
-  Future<void> _verifyAndFixMigration(Database db) async {
-    try {
-      final columns = await db.rawQuery('PRAGMA table_info(notes)');
-      final hasCategory = columns.any((column) => column['name'] == 'category');
-
-      if (!hasCategory) {
-        // debugPrint('🚨 [FIX] Category column MISSING - Adding NOW!');
-        await db.execute(
-          'ALTER TABLE notes ADD COLUMN category TEXT DEFAULT "Personal"',
-        );
-        await db.execute('PRAGMA user_version = 7');
-        // debugPrint(' [FIX] Category column added + version=7');
-      } else {
-        // debugPrint(
-        //   ' [CHECK] Category column exists (${columns.length} total columns)',
-        // );
-      }
-    } catch (e) {
-      // debugPrint('⚠️ [CHECK] Migration check failed: $e');
-    }
-  }
-
-  Future<void> _verifyTodoMigration(Database db) async {
-    try {
-      final columns = await db.rawQuery('PRAGMA table_info(notes)');
-      final hasIsCompleted = columns.any(
-        (column) => column['name'] == 'is_completed',
-      );
-
-      if (!hasIsCompleted) {
-        // debugPrint('🚨 [FIX] is_completed column MISSING - Adding NOW!');
-        await db.execute(
-          'ALTER TABLE notes ADD COLUMN is_completed INTEGER DEFAULT 0',
-        );
-        // debugPrint(' [FIX] is_completed column added');
-      } else {
-        // debugPrint(' [CHECK] is_completed column exists');
-      }
-    } catch (e) {
-      // debugPrint('⚠️ [CHECK] Todo migration check failed: $e');
-    }
-  }
-
-  Future<void> _verifyTodoListMigration(Database db) async {
-    try {
-      final columns = await db.rawQuery('PRAGMA table_info(notes)');
-      final hasTodoList = columns.any((column) => column['name'] == 'todoList');
-
-      if (!hasTodoList) {
-        // debugPrint('🚨 [FIX] todoList column MISSING - Adding NOW!');
-        await db.execute(
-          'ALTER TABLE notes ADD COLUMN todoList TEXT DEFAULT \'[]\'',
-        );
-        // debugPrint(' [FIX] todoList column added');
-      } else {
-        // debugPrint(' [CHECK] todoList column exists');
-      }
-    } catch (e) {
-      //  debugPrint('⚠️ [CHECK] TodoList migration check failed: $e');
-    }
-  }
-
-  // ---
-  // SCHEMA: CREATE
-  // ---
+  // --------------------------------------------------
+  // SCHEMA
+  // --------------------------------------------------
 
   Future<void> _onCreate(Database db, int version) async {
-    // debugPrint('🔨 [DB] Creating new database...');
     await db.execute('''
       CREATE TABLE notes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL, 
+        title TEXT NOT NULL,
         content TEXT NOT NULL,
         createdAt TEXT NOT NULL,
         color TEXT,
@@ -138,333 +71,389 @@ class DatabaseService {
         contentFontFamily TEXT,
         titleFontSize REAL,
         contentFontSize REAL,
-        category TEXT DEFAULT "Personal",
+        category TEXT DEFAULT 'Personal',
         is_completed INTEGER DEFAULT 0,
-        todoList TEXT DEFAULT '[]'  -- checklist JSON
+        todoList TEXT DEFAULT '[]',
+        isChecklist INTEGER NOT NULL DEFAULT 0
       )
     ''');
-    // debugPrint(' [DB] Table created with todoList column');
   }
-
-  // ---
-  // SCHEMA: UPGRADE (v1 → v9)
-  // ---
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // debugPrint('🔄 [DB] Migrating from v$oldVersion → v$newVersion');
+    // Repair the schema using actual table columns.
+    await _ensureCurrentSchema(db);
+  }
 
-    if (oldVersion < 2) {
-      await db.execute('ALTER TABLE notes ADD COLUMN color TEXT');
+  Future<void> _onOpen(Database db) async {
+    await _ensureCurrentSchema(db);
+  }
+
+  Future<Set<String>> _getColumnNames(Database db) async {
+    final columns = await db.rawQuery('PRAGMA table_info($_notesTable)');
+
+    return columns.map((column) => column['name'] as String).toSet();
+  }
+
+  Future<bool> _addColumnIfMissing(
+    Database db,
+    Set<String> columns,
+    String name,
+    String definition,
+  ) async {
+    if (columns.contains(name)) {
+      return false;
     }
 
-    if (oldVersion < 3) {
-      await db.execute('ALTER TABLE notes ADD COLUMN textColor TEXT');
+    await db.execute('ALTER TABLE $_notesTable ADD COLUMN $name $definition');
+
+    columns.add(name);
+    return true;
+  }
+
+  Future<void> _ensureCurrentSchema(Database db) async {
+    final tables = await db.rawQuery(
+      '''
+      SELECT name
+      FROM sqlite_master
+      WHERE type = 'table' AND name = ?
+      ''',
+      [_notesTable],
+    );
+
+    // Create the complete schema only if the notes table is missing.
+    if (tables.isEmpty) {
+      await _onCreate(db, _databaseVersion);
+      return;
     }
 
-    if (oldVersion < 4) {
-      await db.execute('ALTER TABLE notes ADD COLUMN titleFontFamily TEXT');
-      await db.execute('ALTER TABLE notes ADD COLUMN contentFontFamily TEXT');
-    }
+    final columns = await _getColumnNames(db);
 
-    if (oldVersion < 5) {
-      await db.execute('ALTER TABLE notes ADD COLUMN titleFontSize REAL');
-      await db.execute('ALTER TABLE notes ADD COLUMN contentFontSize REAL');
-    }
+    await _addColumnIfMissing(db, columns, 'color', 'TEXT');
 
-    if (oldVersion < 6) {
-      // debugPrint('🔥 [DB] v6: Migrating textColor → separate colors...');
-      await db.execute('ALTER TABLE notes ADD COLUMN titleTextColor TEXT');
-      await db.execute('ALTER TABLE notes ADD COLUMN contentTextColor TEXT');
+    await _addColumnIfMissing(db, columns, 'textColor', 'TEXT');
 
+    await _addColumnIfMissing(db, columns, 'titleFontFamily', 'TEXT');
+
+    await _addColumnIfMissing(db, columns, 'contentFontFamily', 'TEXT');
+
+    await _addColumnIfMissing(db, columns, 'titleFontSize', 'REAL');
+
+    await _addColumnIfMissing(db, columns, 'contentFontSize', 'REAL');
+
+    await _addColumnIfMissing(db, columns, 'titleTextColor', 'TEXT');
+
+    await _addColumnIfMissing(db, columns, 'contentTextColor', 'TEXT');
+
+    await _addColumnIfMissing(
+      db,
+      columns,
+      'category',
+      "TEXT DEFAULT 'Personal'",
+    );
+
+    await _addColumnIfMissing(db, columns, 'is_completed', 'INTEGER DEFAULT 0');
+
+    await _addColumnIfMissing(db, columns, 'todoList', "TEXT DEFAULT '[]'");
+
+    // Fix the reported error: existing databases may lack this column.
+    final checklistColumnAdded = await _addColumnIfMissing(
+      db,
+      columns,
+      'isChecklist',
+      'INTEGER NOT NULL DEFAULT 0',
+    );
+
+    // Preserve legacy text colors when migrating older databases.
+    if (columns.contains('textColor')) {
       await db.execute('''
-        UPDATE notes 
-        SET titleTextColor = COALESCE(textColor, '#000000'),
-            contentTextColor = COALESCE(textColor, '#000000')
+        UPDATE notes
+        SET
+          titleTextColor =
+            COALESCE(titleTextColor, textColor, '#000000'),
+          contentTextColor =
+            COALESCE(contentTextColor, textColor, '#000000')
         WHERE textColor IS NOT NULL
       ''');
-
-      // debugPrint(' [DB] v6: Migration complete!');
     }
 
-    if (oldVersion < 7) {
-      await db.execute(
-        'ALTER TABLE notes ADD COLUMN category TEXT DEFAULT "Personal"',
-      );
-      // debugPrint(' [DB] v7: Added category column');
-    }
-
-    if (oldVersion < 8) {
-      // debugPrint(' [DB] v8: Adding is_completed column...');
-      await db.execute(
-        'ALTER TABLE notes ADD COLUMN is_completed INTEGER DEFAULT 0',
-      );
-      // debugPrint(' [DB] v8: is_completed column added!');
-    }
-
-    if (oldVersion < 9) {
-      // debugPrint(' [DB] v9: Adding todoList column...');
-      await db.execute(
-        'ALTER TABLE notes ADD COLUMN todoList TEXT DEFAULT \'[]\'',
-      );
-      // debugPrint(' [DB] v9: todoList column added!');
+    // Backfill checklist status only when the column is first added.
+    // Existing notes and their checklist JSON are retained.
+    if (checklistColumnAdded) {
+      await _backfillChecklistStatus(db);
     }
   }
 
+  Future<void> _backfillChecklistStatus(Database db) async {
+    final rows = await db.query(
+      _notesTable,
+      columns: ['id', 'category', 'todoList'],
+    );
+
+    for (final row in rows) {
+      final id = row['id'];
+      final category = (row['category'] as String? ?? '').trim().toLowerCase();
+
+      final rawTodoList = row['todoList'];
+      var hasTasks = false;
+
+      try {
+        final decoded = rawTodoList is String
+            ? jsonDecode(rawTodoList)
+            : rawTodoList;
+
+        hasTasks = decoded is List && decoded.isNotEmpty;
+      } catch (_) {
+        // Malformed legacy JSON must not prevent the database opening.
+      }
+
+      // To-Do category notes and notes with existing tasks are checklists.
+      if (category == 'to-do' || hasTasks) {
+        await db.update(
+          _notesTable,
+          {'isChecklist': 1},
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+      }
+    }
+  }
+
+  // Retained for compatibility with existing calls.
   static Future<void> _ensureSchemaReady(Database db) async {
-    try {
-      await db.rawQuery(
-        'SELECT category, is_completed, todoList FROM notes WHERE 1 LIMIT 1',
-      );
-    } catch (e) {
-      final errorStr = e.toString();
-      if (errorStr.contains('no column named category')) {
-        // debugPrint('🚨 [EMERGENCY] Adding category column...');
-        await db.execute(
-          'ALTER TABLE notes ADD COLUMN category TEXT DEFAULT "Personal"',
-        );
-      }
-      if (errorStr.contains('no column named is_completed')) {
-        // debugPrint('🚨 [EMERGENCY] Adding is_completed column...');
-        await db.execute(
-          'ALTER TABLE notes ADD COLUMN is_completed INTEGER DEFAULT 0',
-        );
-      }
-      if (errorStr.contains('no column named todoList')) {
-        //    debugPrint('🚨 [EMERGENCY] Adding todoList column...');
-        await db.execute(
-          'ALTER TABLE notes ADD COLUMN todoList TEXT DEFAULT \'[]\'',
-        );
-      }
-    }
+    await instance._ensureCurrentSchema(db);
   }
 
-  // ---
+  // --------------------------------------------------
+  // SERIALIZATION
+  // --------------------------------------------------
+
+  static Map<String, dynamic> _decodeNoteRow(Map<String, dynamic> rawRow) {
+    final row = Map<String, dynamic>.from(rawRow);
+    final rawTodoList = row['todoList'];
+
+    if (rawTodoList is String) {
+      try {
+        final decoded = jsonDecode(rawTodoList);
+        row['todoList'] = decoded is List ? decoded : <dynamic>[];
+      } catch (_) {
+        // Recover from malformed JSON without losing the note.
+        row['todoList'] = <dynamic>[];
+      }
+    } else if (rawTodoList is! List) {
+      row['todoList'] = <dynamic>[];
+    }
+
+    // Support older rows and legacy checklist data.
+    final rawChecklist = row['isChecklist'];
+    final storedChecklist = rawChecklist == 1 || rawChecklist == true;
+
+    final todoList = row['todoList'] as List;
+    final category = (row['category'] as String? ?? '').trim().toLowerCase();
+
+    row['isChecklist'] =
+        storedChecklist || todoList.isNotEmpty || category == 'to-do';
+
+    return row;
+  }
+
+  static List<Note> _mapNotes(List<Map<String, dynamic>> rows) {
+    return rows.map((row) => Note.fromMap(_decodeNoteRow(row))).toList();
+  }
+
+  static Map<String, dynamic> _encodeNote(Note note) {
+    final map = Map<String, dynamic>.from(note.toMap());
+
+    final todoList = map['todoList'];
+
+    map['todoList'] = jsonEncode(todoList is List ? todoList : <dynamic>[]);
+
+    // Store SQLite booleans as integers.
+    map['isChecklist'] = map['isChecklist'] == true || map['isChecklist'] == 1
+        ? 1
+        : 0;
+
+    return map;
+  }
+
+  // --------------------------------------------------
   // READ
-  // ---
+  // --------------------------------------------------
 
   static Future<List<Note>> getAllNotes() async {
-    try {
-      final db = await DatabaseService.instance.database;
-      final result = await db.query('notes', orderBy: 'createdAt DESC');
+    final db = await instance.database;
 
-      final notes = result.map((rawRow) {
-        // Map<String, dynamic> is read-only ⇒ copy it
-        final Map<String, dynamic> e = Map<String, dynamic>.from(rawRow);
+    final rows = await db.query(_notesTable, orderBy: 'createdAt DESC');
 
-        final rawTodoList = e['todoList'] as String?;
-        if (rawTodoList != null) {
-          e['todoList'] = jsonDecode(rawTodoList);
-        }
-
-        return Note.fromMap(e);
-      }).toList();
-
-      // debugPrint('📊 [SEARCH] Loaded ${notes.length} notes for filtering');
-      return notes;
-    } catch (e) {
-      // debugPrint('❌ [SEARCH] getAllNotes FAILED: $e');
-      return [];
-    }
-  }
-
-  static Future<List<Note>> searchNotes(String query) async {
-    try {
-      if (query.isEmpty) return getAllNotes();
-
-      final db = await DatabaseService.instance.database;
-      final result = await db.query(
-        'notes',
-        where: 'LOWER(title) LIKE ? OR LOWER(content) LIKE ?',
-        whereArgs: ['%$query%', '%$query%'],
-        orderBy: 'createdAt DESC',
-      );
-
-      final notes = result.map((rawRow) {
-        final Map<String, dynamic> e = Map<String, dynamic>.from(
-          rawRow,
-        ); // COPY
-
-        final rawTodoList = e['todoList'] as String?;
-        if (rawTodoList != null) {
-          e['todoList'] = jsonDecode(rawTodoList);
-        }
-
-        return Note.fromMap(e);
-      }).toList();
-
-      // debugPrint('🔍 [SEARCH] Found ${notes.length} notes matching "$query"');
-      return notes;
-    } catch (e) {
-      // debugPrint('❌ [SEARCH] searchNotes FAILED: $e');
-      return [];
-    }
-  }
-
-  static Future<List<Note>> getNotesByDate(String dateStr) async {
-    try {
-      final db = await DatabaseService.instance.database;
-      final result = await db.query(
-        'notes',
-        where: 'DATE(createdAt) = ?',
-        whereArgs: [dateStr],
-        orderBy: 'createdAt DESC',
-      );
-
-      final notes = result.map((rawRow) {
-        final Map<String, dynamic> e = Map<String, dynamic>.from(rawRow);
-
-        final rawTodoList = e['todoList'] as String?;
-        if (rawTodoList != null) {
-          e['todoList'] = jsonDecode(rawTodoList);
-        }
-
-        return Note.fromMap(e);
-      }).toList();
-
-      // debugPrint('📅 [DATE] Found ${notes.length} notes on $dateStr');
-      return notes;
-    } catch (e) {
-      // debugPrint('❌ [DATE] getNotesByDate FAILED: $e');
-      return [];
-    }
-  }
-
-  static Future<Map<String, List<Note>>> getNotesGroupedByDay() async {
-    try {
-      final allNotes = await getAllNotes();
-      final grouped = <String, List<Note>>{};
-
-      for (final note in allNotes) {
-        final dayKey = note.createdAt.substring(0, 10);
-        grouped.putIfAbsent(dayKey, () => []).add(note);
-      }
-
-      // debugPrint(
-      //   '📅 [GROUP] Grouped ${allNotes.length} notes into ${grouped.length} days',
-      // );
-      return grouped;
-    } catch (e) {
-      // debugPrint('❌ [GROUP] getNotesGroupedByDay FAILED: $e');
-      return {};
-    }
-  }
-
-  // ---
-  // WRITE
-  // ---
-
-  static Future<int> addNote(Note note) async {
-    try {
-      final db = await DatabaseService.instance.database;
-      await _ensureSchemaReady(db);
-
-      final Map<String, dynamic> map = note.toMap();
-
-      // Convert todoList to JSON string
-      final todoListJson = map.containsKey('todoList')
-          ? jsonEncode(map['todoList'])
-          : '[]';
-      map['todoList'] = todoListJson;
-
-      final id = await db.insert('notes', map);
-      // debugPrint('💾 [SAVE] New note ID: $id');
-      return id;
-    } catch (e) {
-      // debugPrint('❌ [SAVE] addNote FAILED: $e');
-      rethrow;
-    }
-  }
-
-  static Future<int> updateNote(Note note) async {
-    try {
-      final db = await DatabaseService.instance.database;
-
-      await _ensureSchemaReady(db);
-
-      final Map<String, dynamic> map = note.toMap();
-
-      final todoListJson = map.containsKey('todoList')
-          ? jsonEncode(map['todoList'])
-          : '[]';
-
-      map['todoList'] = todoListJson;
-
-      final rowsAffected = await db.update(
-        'notes',
-        map,
-        where: 'id = ?',
-        whereArgs: [note.id],
-      );
-
-      return rowsAffected;
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  static Future<void> toggleNoteCompletion(int id, bool isCompleted) async {
-    try {
-      final db = await DatabaseService.instance.database;
-      await db.update(
-        'notes',
-        {'is_completed': isCompleted ? 1 : 0},
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-      // debugPrint(' [TODO] Toggled note $id completion: $isCompleted');
-    } catch (e) {
-      // debugPrint('❌ [TODO] toggleNoteCompletion FAILED: $e');
-      rethrow;
-    }
-  }
-
-  static Future<int> deleteNote(int id) async {
-    try {
-      final db = await DatabaseService.instance.database;
-      final rowsAffected = await db.delete(
-        'notes',
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-      //  debugPrint('🗑️ [DELETE] Note $id: $rowsAffected rows');
-      return rowsAffected;
-    } catch (e) {
-      // debugPrint('❌ [DELETE] deleteNote FAILED: $e');
-      rethrow;
-    }
+    return _mapNotes(rows);
   }
 
   static Future<List<Note>> getNotes() async {
-    return await getAllNotes();
+    return getAllNotes();
   }
 
-  // ---
+  static Future<List<Note>> searchNotes(String query) async {
+    final trimmedQuery = query.trim();
+
+    if (trimmedQuery.isEmpty) {
+      return getAllNotes();
+    }
+
+    final db = await instance.database;
+    final pattern = '%${trimmedQuery.toLowerCase()}%';
+
+    final rows = await db.query(
+      _notesTable,
+      where: 'LOWER(title) LIKE ? OR LOWER(content) LIKE ?',
+      whereArgs: [pattern, pattern],
+      orderBy: 'createdAt DESC',
+    );
+
+    return _mapNotes(rows);
+  }
+
+  static Future<List<Note>> getNotesByDate(String dateStr) async {
+    final db = await instance.database;
+
+    final rows = await db.query(
+      _notesTable,
+      where: 'DATE(createdAt) = ?',
+      whereArgs: [dateStr],
+      orderBy: 'createdAt DESC',
+    );
+
+    return _mapNotes(rows);
+  }
+
+  static Future<Map<String, List<Note>>> getNotesGroupedByDay() async {
+    final notes = await getAllNotes();
+    final grouped = <String, List<Note>>{};
+
+    for (final note in notes) {
+      final createdAt = DateTime.tryParse(note.createdAt);
+
+      final dayKey = createdAt != null
+          ? '${createdAt.year.toString().padLeft(4, '0')}-'
+                '${createdAt.month.toString().padLeft(2, '0')}-'
+                '${createdAt.day.toString().padLeft(2, '0')}'
+          : note.createdAt.length >= 10
+          ? note.createdAt.substring(0, 10)
+          : note.createdAt;
+
+      grouped.putIfAbsent(dayKey, () => []).add(note);
+    }
+
+    return grouped;
+  }
+
+  // --------------------------------------------------
+  // WRITE
+  // --------------------------------------------------
+
+  static Future<int> addNote(Note note) async {
+    final db = await instance.database;
+    await _ensureSchemaReady(db);
+
+    final map = _encodeNote(note);
+
+    // Let SQLite generate the primary key for new notes.
+    map.remove('id');
+
+    return db.insert(
+      _notesTable,
+      map,
+      conflictAlgorithm: ConflictAlgorithm.abort,
+    );
+  }
+
+  static Future<int> updateNote(Note note) async {
+    final db = await instance.database;
+    await _ensureSchemaReady(db);
+
+    final map = _encodeNote(note);
+
+    // Never update the primary key during an edit.
+    map.remove('id');
+
+    return db.update(_notesTable, map, where: 'id = ?', whereArgs: [note.id]);
+  }
+
+  static Future<void> toggleNoteCompletion(int id, bool isCompleted) async {
+    final db = await instance.database;
+    await _ensureSchemaReady(db);
+
+    await db.update(
+      _notesTable,
+      {'is_completed': isCompleted ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  static Future<int> deleteNote(int id) async {
+    final db = await instance.database;
+
+    return db.delete(_notesTable, where: 'id = ?', whereArgs: [id]);
+  }
+
+  // --------------------------------------------------
   // DEBUG / TOOLS
-  // ---
+  // --------------------------------------------------
 
   static Future<void> debugDumpAll() async {
-    // debugPrint('🔍 [DEBUG] === FULL DATABASE DUMP ===');
-    final db = await DatabaseService.instance.database;
+    final db = await instance.database;
 
     final tables = await db.rawQuery(
-      "SELECT name FROM sqlite_master WHERE type='table'",
+      "SELECT name FROM sqlite_master WHERE type = 'table'",
     );
-    debugPrint('📋 Tables: ${tables.map((t) => t['name']).toList()}');
+
+    debugPrint('Tables: ${tables.map((table) => table['name']).toList()}');
 
     final notes = await getAllNotes();
-    // debugPrint('📝 Total notes: ${notes.length}');
-    for (int i = 0; i < notes.length && i < 5; i++) {
-      final note = notes[i];
+
+    debugPrint('Total notes: ${notes.length}');
+
+    for (final note in notes.take(5)) {
       debugPrint(
-        '  Note ${note.id}: "${note.title}" (${note.createdAt}) '
-        'category: "${note.category}" ${note.isCompleted == true ? "DONE" : "PENDING"} '
-        'checklist: ${note.todoList.length} items',
+        'Note ${note.id}: "${note.title}" '
+        '(${note.createdAt}), '
+        'category: "${note.category}", '
+        'status: ${note.isCompleted == true ? "DONE" : "PENDING"}, '
+        'isChecklist: ${note.isChecklist}, '
+        'checklist items: ${note.todoList.length}',
       );
     }
   }
 
   static Future<String> getDatabasePath() async {
-    Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    return join(documentsDirectory.path, "notes_database.db");
+    final directory = await getApplicationDocumentsDirectory();
+
+    return join(directory.path, _databaseName);
+  }
+
+  static Future<void> debugTodoNote(String title) async {
+    final db = await instance.database;
+
+    final rows = await db.query(
+      _notesTable,
+      where: 'title = ?',
+      whereArgs: [title],
+    );
+
+    for (final row in rows) {
+      debugPrint('--- TODO NOTE DIAGNOSTIC ---');
+      debugPrint('ID: ${row['id']}');
+      debugPrint('Title: ${row['title']}');
+      debugPrint('Category: ${row['category']}');
+      debugPrint('isChecklist: ${row['isChecklist']}');
+      debugPrint('Raw todoList: ${row['todoList']}');
+
+      final decoded = _decodeNoteRow(row);
+      final note = Note.fromMap(decoded);
+
+      debugPrint('Decoded task count: ${note.todoList.length}');
+      debugPrint(
+        'Decoded tasks: ${note.todoList.map((item) => item.text).toList()}',
+      );
+    }
   }
 }

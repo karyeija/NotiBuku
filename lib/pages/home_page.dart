@@ -78,9 +78,14 @@ class _NoteListState extends State<NoteList> {
     if (selectedCategory != null &&
         selectedCategory!.isNotEmpty &&
         selectedCategory != 'All Notes') {
-      filteredNotes = filteredNotes
-          .where((note) => note.category == selectedCategory)
-          .toList();
+      filteredNotes = filteredNotes.where((note) {
+        if (selectedCategory == 'To-Do') {
+          return note.isChecklist == true;
+        }
+
+        // Exclude checklist notes from ordinary categories.
+        return note.isChecklist != true && note.category == selectedCategory;
+      }).toList();
     }
 
     // Date filter
@@ -317,7 +322,13 @@ class _NoteListState extends State<NoteList> {
       return allNotes.length;
     }
 
-    return allNotes.where((note) => note.category == category).length;
+    if (category == 'To-Do') {
+      return allNotes.where((note) => note.isChecklist == true).length;
+    }
+
+    return allNotes
+        .where((note) => note.isChecklist != true && note.category == category)
+        .length;
   }
 
   // ================================================================
@@ -364,128 +375,117 @@ class _NoteListState extends State<NoteList> {
     // ==============================================================
 
     if (showCategoryView) {
-      return Scaffold(
-        drawer: Container(color: Colors.white, child: CustomDrawer()),
-        appBar: NotiBukuCategoryAppBar(
-          isSearching: isSearching,
-          searchController: _searchController,
-          onSearchPressed: () {
-            setState(() {
-              isSearching = true;
-            });
-          },
-          onClearSearch: () {
-            _searchController.clear();
+      return PopScope(
+        canPop: true,
+        child: Scaffold(
+          drawer: Container(color: Colors.white, child: CustomDrawer()),
+          appBar: NotiBukuCategoryAppBar(
+            isSearching: isSearching,
+            searchController: _searchController,
+            onSearchPressed: () {
+              setState(() {
+                isSearching = true;
+              });
+            },
+            onClearSearch: () {
+              _searchController.clear();
 
-            setState(() {
-              isSearching = false;
-            });
-          },
-        ),
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            final height = constraints.maxHeight;
+              setState(() {
+                isSearching = false;
+              });
+            },
+          ),
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final height = constraints.maxHeight;
 
-            // Landscape
-            final bool isLandscape = width > height;
+              // Landscape
+              final bool isLandscape = width > height;
 
-            // Choose columns based primarily on available width.
-            final int crossAxisCount;
+              // Choose columns based primarily on available width.
+              final int crossAxisCount;
 
-            if (isLandscape) {
-              if (width >= 1000) {
-                crossAxisCount = 5;
-              } else if (width >= 700) {
-                crossAxisCount = 4;
+              if (isLandscape) {
+                if (width >= 1000) {
+                  crossAxisCount = 5;
+                } else if (width >= 700) {
+                  crossAxisCount = 4;
+                } else {
+                  crossAxisCount = 3;
+                }
               } else {
-                crossAxisCount = 3;
+                if (width <= 322) {
+                  crossAxisCount = 2;
+                } else {
+                  crossAxisCount = 3;
+                }
               }
-            } else {
-              if (width <= 322) {
-                crossAxisCount = 2;
-              } else {
-                crossAxisCount = 3;
-              }
-            }
 
-            // Smaller spacing in landscape so the cards have
-            // enough room vertically and horizontally.
-            final double horizontalPadding = isLandscape ? 24 : 20;
+              // Smaller spacing in landscape.
+              final double horizontalPadding = isLandscape ? 24 : 20;
+              final double spacing = isLandscape ? 14 : 20;
 
-            final double spacing = isLandscape ? 14 : 20;
-
-            return CustomScrollView(
-              slivers: [
-                // --------------------------------------------------------
-                // CATEGORY HEADER
-                // --------------------------------------------------------
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.all(isLandscape ? 16 : 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Choose Category',
-                          style: TextStyle(
-                            fontSize: isLandscape ? 27 : 28,
-                            fontWeight: FontWeight.bold,
-                            color: const Color.fromARGB(255, 87, 5, 102),
+              return CustomScrollView(
+                slivers: [
+                  // CATEGORY HEADER
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(isLandscape ? 16 : 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Choose Category',
+                            style: TextStyle(
+                              fontSize: isLandscape ? 27 : 28,
+                              fontWeight: FontWeight.bold,
+                              color: const Color.fromARGB(255, 87, 5, 102),
+                            ),
                           ),
-                        ),
-
-                        SizedBox(height: isLandscape ? 8 : 20),
-
-                        Text(
-                          'Tap to view notes',
-                          style: TextStyle(
-                            fontSize: isLandscape ? 14 : 16,
-                            color: Colors.grey[600],
+                          SizedBox(height: isLandscape ? 8 : 20),
+                          Text(
+                            'Tap to view notes',
+                            style: TextStyle(
+                              fontSize: isLandscape ? 14 : 16,
+                              color: Colors.grey[600],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
 
-                // --------------------------------------------------------
-                // CATEGORY GRID
-                // --------------------------------------------------------
-                SliverPadding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: horizontalPadding,
-                    vertical: isLandscape ? 8 : 10,
-                  ),
-
-                  sliver: SliverGrid(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-
-                      // Landscape cards are wider and shorter.
-                      childAspectRatio: isLandscape ? 1.03 : 0.85,
-
-                      crossAxisSpacing: spacing,
-                      mainAxisSpacing: spacing,
+                  // CATEGORY GRID
+                  SliverPadding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding,
+                      vertical: isLandscape ? 8 : 10,
                     ),
+                    sliver: SliverGrid(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: isLandscape ? 1.03 : 0.85,
+                        crossAxisSpacing: spacing,
+                        mainAxisSpacing: spacing,
+                      ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final category = categories[index];
+                        final noteCount = _getCategoryNoteCount(category.name);
 
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final category = categories[index];
-
-                      final noteCount = _getCategoryNoteCount(category.name);
-
-                      return NotiBukuCategoryCard(
-                        category: category,
-                        noteCount: noteCount,
-                        isLandscape: isLandscape,
-                        onTap: () => _selectCategory(category.name),
-                      );
-                    }, childCount: categories.length),
+                        return NotiBukuCategoryCard(
+                          category: category,
+                          noteCount: noteCount,
+                          isLandscape: isLandscape,
+                          onTap: () => _selectCategory(category.name),
+                        );
+                      }, childCount: categories.length),
+                    ),
                   ),
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
       );
     }
@@ -505,8 +505,15 @@ class _NoteListState extends State<NoteList> {
         selectedCategory != null;
 
     bool isLandscape = screenWidth > MediaQuery.of(context).size.height;
-    return Scaffold(
-      drawer: Container(color: Colors.white, child: CustomDrawer()),
+    return PopScope(
+  canPop: false,
+  onPopInvokedWithResult: (bool didPop, dynamic result) {
+    if (didPop) return;
+
+    _backToCategories();
+  },
+  child: Scaffold(
+    drawer: Container(color: Colors.white, child: CustomDrawer()),
 
       // ------------------------------------------------------------
       // NEW NOTE BUTTON
@@ -657,16 +664,13 @@ class _NoteListState extends State<NoteList> {
               toggleTodoComplete: _toggleTodoComplete,
               loadNotes: loadNotes,
               getMonthName: getMonthName,
-            )
-    );
+            ),
+    ));
   }
-
 
   // ================================================================
   // NOTES LIST
   // ================================================================
-
-
 }
 
 // ====================================================================

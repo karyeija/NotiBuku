@@ -1,5 +1,3 @@
-// lib/widgets/noteform/note_style_panel.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:notibuku/services/sizefactor.dart';
@@ -35,218 +33,151 @@ class NoteStylePanel extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final screenWidth = Func().screenWidth(context);
-    final bool isSmall = screenWidth <= 322;
-    final bool isMedium = screenWidth > 322 && screenWidth <= 700;
+    final width = Func().screenWidth(context);
+    final small = width <= 322;
+    final medium = width <= 700;
+    final radius =
+        width *
+        (small
+            ? .06
+            : medium
+            ? .05
+            : .03);
 
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(12),
-          topRight: Radius.circular(12),
-        ),
         color: Colors.green[900],
-        boxShadow: [BoxShadow(blurRadius: 10, color: Colors.black26)],
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+        boxShadow: const [BoxShadow(blurRadius: 10, color: Colors.black26)],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Title buttons row
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    CircleAvatar(
-                      maxRadius: isSmall
-                          ? screenWidth * 0.06
-                          : isMedium
-                          ? screenWidth * 0.05
-                          : screenWidth * 0.03,
-                      backgroundColor: Colors.red,
-                      child: IconButton(
-                        padding: EdgeInsets.zero,
-                        icon: FittedBox(
-                          child: Text(
-                            'T.F',
-                            style: TextStyle(
-                              fontSize: isSmall
-                                  ? screenWidth * 0.05
-                                  : isMedium
-                                  ? screenWidth * 0.03
-                                  : screenWidth * 0.03,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: titleFontFamily,
-                            ),
-                          ),
-                        ),
-                        onPressed: onShowTitleFontPicker,
-                      ),
-                    ),
-                    Text(
-                      'Title',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14,
-                      ),
-                    ),
-                    CircleAvatar(
-                      maxRadius: isSmall
-                          ? screenWidth * 0.06
-                          : isMedium
-                          ? screenWidth * 0.05
-                          : screenWidth * 0.03,
-                      backgroundColor: titleColor.computeLuminance() > 0.5
-                          ? Colors.black87
-                          : Colors.white,
-                      child: IconButton(
-                        padding: EdgeInsets.zero,
-                        icon: Container(
-                          width: isSmall
-                              ? screenWidth * 0.95
-                              : isMedium
-                              ? screenWidth * 0.4
-                              : screenWidth * 0.5,
-                          height: isSmall
-                              ? screenWidth * 0.09
-                              : isMedium
-                              ? screenWidth * 0.09
-                              : screenWidth * 0.05,
-                          decoration: BoxDecoration(
-                            color: titleColor,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              Icons.title,
-                              size: isSmall
-                                  ? screenWidth * 0.07
-                                  : isMedium
-                                  ? screenWidth * 0.05
-                                  : screenWidth * 0.048,
-                              color: titleColor.computeLuminance() > 0.5
-                                  ? Colors.black87
-                                  : Colors.white,
-                            ),
-                          ),
-                        ),
-                        onPressed: onShowTitleColorPicker,
-                      ),
-                    ),
-                  ],
-                ),
-                FontSizeSlider(
-                  minFontSize: 12,
-                  maxFontSize: 32,
-                  isTitle: true,
-                  containerColor: const Color.fromARGB(255, 73, 8, 3),
-                ),
-              ],
+          _section(
+            label: 'Title',
+            fontLabel: 'T.F',
+            fontFamily: titleFontFamily,
+            color: titleColor,
+            radius: radius,
+            fontSize: width * (small ? .05 : .03),
+            onFontTap: onShowTitleFontPicker,
+            onColorTap: onShowTitleColorPicker,
+            colorIcon: Icons.title,
+            slider: const FontSizeSlider(
+              minFontSize: 12,
+              maxFontSize: 32,
+              isTitle: true,
+              containerColor: Color.fromARGB(255, 73, 8, 3),
             ),
           ),
-          SizedBox(width: 6),
-          // Content buttons row
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    CircleAvatar(
-                      maxRadius: isSmall
-                          ? screenWidth * 0.06
-                          : isMedium
-                          ? screenWidth * 0.05
-                          : screenWidth * 0.03,
-                      backgroundColor: Colors.red,
-                      child: FittedBox(
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          icon: Text(
-                            'C.F',
-                            style: TextStyle(
-                              fontSize: isSmall
-                                  ? screenWidth * 0.05
-                                  : isMedium
-                                  ? screenWidth * 0.04
-                                  : screenWidth * 0.03,
-                              color: Colors.white,
-                              fontFamily: contentFontFamily,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          onPressed: onShowContentFontPicker,
-                        ),
-                      ),
-                    ),
-                    FittedBox(
-                      child: Text(
-                        'Content',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                    CircleAvatar(
-                      maxRadius: isSmall
-                          ? screenWidth * 0.06
-                          : isMedium
-                          ? screenWidth * 0.05
-                          : screenWidth * 0.03,
-                      backgroundColor: contentColor.computeLuminance() > 0.5
-                          ? Colors.black87
-                          : Colors.white60,
-                      child: IconButton(
-                        padding: EdgeInsets.zero,
-                        icon: Container(
-                          padding: EdgeInsets.zero,
-                          width: isSmall
-                              ? screenWidth * 0.08
-                              : isMedium
-                              ? screenWidth * 0.8
-                              : screenWidth * 0.048,
-                          height: isSmall
-                              ? screenWidth * 0.08
-                              : isMedium
-                              ? screenWidth * 0.08
-                              : screenWidth * 0.06,
-                          decoration: BoxDecoration(
-                            color: contentColor,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.format_color_fill_outlined,
-                            size: isSmall
-                                ? screenWidth * 0.05
-                                : isMedium
-                                ? screenWidth * 0.03
-                                : screenWidth * 0.025,
-                            color: contentColor.computeLuminance() > 0.5
-                                ? Colors.black87
-                                : Colors.white,
-                          ),
-                        ),
-                        onPressed: onShowContentColorPicker,
-                      ),
-                    ),
-                  ],
-                ),
-                FontSizeSlider(minFontSize: 10, maxFontSize: 24),
-              ],
-            ),
+          _section(
+            label: 'Content',
+            fontLabel: 'C.F',
+            fontFamily: contentFontFamily,
+            color: contentColor,
+            radius: radius,
+            fontSize:
+                width *
+                (small
+                    ? .05
+                    : medium
+                    ? .04
+                    : .03),
+            onFontTap: onShowContentFontPicker,
+            onColorTap: onShowContentColorPicker,
+            colorIcon: Icons.format_color_fill_outlined,
+            slider: const FontSizeSlider(minFontSize: 10, maxFontSize: 24),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _section({
+    required String label,
+    required String fontLabel,
+    required String fontFamily,
+    required Color color,
+    required double radius,
+    required double fontSize,
+    required VoidCallback onFontTap,
+    required VoidCallback onColorTap,
+    required IconData colorIcon,
+    required Widget slider,
+  }) {
+    final foreground = color.computeLuminance() > .5
+        ? Colors.black87
+        : Colors.white;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              _circleButton(
+                radius: radius,
+                background: Colors.red,
+                onTap: onFontTap,
+                child: Text(
+                  fontLabel,
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontFamily: fontFamily,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+
+              _circleButton(
+                radius: radius,
+                background: foreground,
+                onTap: onColorTap,
+                child: Container(
+                  width: radius * 1.45,
+                  height: radius * 1.45,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  child: Icon(colorIcon, size: radius, color: foreground),
+                ),
+              ),
+              slider,
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _circleButton({
+    required double radius,
+    required Color background,
+    required VoidCallback onTap,
+    required Widget child,
+  }) {
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: background,
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints.expand(),
+        onPressed: onTap,
+        icon: FittedBox(child: child),
       ),
     );
   }

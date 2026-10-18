@@ -102,21 +102,17 @@ class TodoSummaryDialog extends StatelessWidget {
             ),
             ElevatedButton.icon(
               onPressed: () async {
-                Navigator.pop(context);
-
-                final result = await Navigator.push<Note>(
+                final updatedNote = await Navigator.push<Note>(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => NoteFormWidget(note: note),
-                  ),
+                  MaterialPageRoute(builder: (_) => NoteFormWidget(note: note)),
                 );
 
-                if (result != null && context.mounted) {
-                  Navigator.pop(context, result);
-                }
+                if (!context.mounted || updatedNote == null) return;
+
+                Navigator.pop(context, updatedNote);
               },
-              icon: Icon(Icons.edit),
-              label: Text('Edit Tasks'),
+              icon: const Icon(Icons.edit),
+              label: const Text('Edit Tasks'),
             ),
           ],
         ),

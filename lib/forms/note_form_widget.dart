@@ -1,22 +1,23 @@
-import 'package:notibuku/models/to_do_item.dart';
-import 'package:notibuku/providers/to_do_providers.dart';
-import 'package:notibuku/utils/helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:screenshot/screenshot.dart';
+
+import 'package:notibuku/models/note.dart';
+import 'package:notibuku/models/to_do_item.dart';
+import 'package:notibuku/pickers/color_picker.dart';
+import 'package:notibuku/pickers/font_picker.dart';
+import 'package:notibuku/providers/to_do_providers.dart';
+import 'package:notibuku/services/note_services.dart';
+import 'package:notibuku/services/sizefactor.dart';
+import 'package:notibuku/utils/helpers.dart';
+import 'package:notibuku/widgets/fontslider.dart';
 import 'package:notibuku/widgets/noteform/bottom_sheet_widget.dart';
 import 'package:notibuku/widgets/noteform/content_widget.dart';
 import 'package:notibuku/widgets/noteform/note_style_panel.dart';
 import 'package:notibuku/widgets/noteform/title_widget.dart';
 import 'package:notibuku/widgets/screenshot/screenshot_capture_button_widget.dart';
 import 'package:notibuku/widgets/screenshot_dialog_widget.dart';
-import 'package:screenshot/screenshot.dart';
-import 'package:notibuku/models/note.dart';
-import 'package:notibuku/pickers/color_picker.dart';
-import 'package:notibuku/pickers/font_picker.dart';
-import 'package:notibuku/services/note_services.dart';
-import 'package:notibuku/services/sizefactor.dart';
-import 'package:notibuku/widgets/fontslider.dart';
 
 class NoteFormWidget extends ConsumerStatefulWidget {
   final Note? note;
@@ -28,29 +29,36 @@ class NoteFormWidget extends ConsumerStatefulWidget {
 }
 
 class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
-  final TextEditingController _titleController = TextEditingController(); // NEW
+  final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
-  String? selectedCategory;
-  bool _isCapturing = false; // Track capture state
+
   final _formKey = GlobalKey<FormState>();
-  String title = '', content = '';
+  final ScreenshotController screenshotController = ScreenshotController();
+
+  String? selectedCategory;
+  String title = '';
+  String content = '';
+
   Color noteColor = Colors.white;
   Color titleColor = Colors.black87;
   Color contentColor = Colors.black87;
+
+  bool _isCapturing = false;
   bool _isSaving = false;
   bool isEditing = false;
+  bool _isChecklistMode = false;
+
+  List<TodoItem> _todoList = [];
+
   late FocusNode _titleFocusNode;
   late FocusNode _contentFocusNode;
   late ValueNotifier<bool> _numberingNotifier;
+
   String titleFontFamily = 'Roboto';
   String contentFontFamily = 'Roboto';
+
   double titleFontSize = 20.0;
   double contentFontSize = 16.0;
-  ScreenshotController screenshotController = ScreenshotController();
-
-  // NEW: checklist portion
-  bool _isChecklistMode = false;
-  List<TodoItem> _todoList = [];
 
   @override
   void initState() {
@@ -58,14 +66,19 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
 
     title = widget.note?.title ?? '';
     content = widget.note?.content ?? '';
+
     noteColor = _hexToColor(widget.note?.color ?? '#FFFFFF');
     titleColor = _hexToColor(widget.note?.titleTextColor ?? '#000000');
     contentColor = _hexToColor(widget.note?.contentTextColor ?? '#000000');
+
     selectedCategory = widget.note?.category ?? 'Personal';
 
-    // Load checklist state if this note has a todoList
-    if (widget.note?.isChecklist == true) {
-      _isChecklistMode = true;
+    // Existing checklist notes retain their identity.
+    // New notes opened in the To-Do category start as checklists.
+    _isChecklistMode =
+        widget.note?.isChecklist == true || selectedCategory == 'To-Do';
+
+    if (_isChecklistMode && widget.note != null) {
       _todoList = List<TodoItem>.from(widget.note!.todoList);
     }
 
@@ -75,50 +88,46 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
     _titleFocusNode.addListener(_handleFocusChange);
     _contentFocusNode.addListener(_handleFocusChange);
 
-    _titleController.text = title; // controller gets initial title
-    _contentController.text = content; // controller gets initial content
+    _titleController.text = title;
+    _contentController.text = content;
 
-    _titleController.addListener(
-      _updateSaveButtonEnablement,
-    ); // listen to title
-    _contentController.addListener(
-      _updateSaveButtonEnablement,
-    ); // listen to content
+    _titleController.addListener(_updateSaveButtonEnablement);
+    _contentController.addListener(_updateSaveButtonEnablement);
 
-    _numberingNotifier = ValueNotifier(false);
+    _numberingNotifier = ValueNotifier<bool>(false);
 
     titleFontFamily = widget.note?.titleFontFamily ?? 'Roboto';
     contentFontFamily = widget.note?.contentFontFamily ?? 'Roboto';
+
     titleFontSize = widget.note?.titleFontSize ?? 20.0;
     contentFontSize = widget.note?.contentFontSize ?? 16.0;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
       ref.read(titleFontSizeProvider.notifier).setFontSize(titleFontSize);
       ref.read(contentFontSizeProvider.notifier).setFontSize(contentFontSize);
     });
-  }
 
-  // 🔥 NEW: Title font picker
-  void _showTitleFontPicker() async {
-    final selectedFont = await showFontPickerDialog(context);
-    if (selectedFont != null && mounted) {
-      setState(() => titleFontFamily = selectedFont);
-    }
-  }
-
-  // 🔥 NEW: Content font picker
-  void _showContentFontPicker() async {
-    final selectedFont = await showFontPickerDialog(context);
-    if (selectedFont != null && mounted) {
-      setState(() => contentFontFamily = selectedFont);
-    }
+    debugPrint('Note title: ${widget.note?.title}');
+    debugPrint('Note category: ${widget.note?.category}');
+    debugPrint('Is checklist: ${widget.note?.isChecklist}');
+    debugPrint('Task count: ${widget.note?.todoList.length}');
+    debugPrint(
+      'Loaded tasks: ${widget.note?.todoList.map((t) => t.text).toList()}',
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await DatabaseService.debugTodoNote('You');
+    });
   }
 
   Color _hexToColor(String hex) {
     hex = hex.replaceAll('#', '');
+
     if (hex.length == 6) {
       hex = 'FF$hex';
     }
+
     return Color(int.parse(hex, radix: 16));
   }
 
@@ -126,150 +135,161 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
       '#${color.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
 
   void _handleFocusChange() {
+    if (!mounted) return;
+
     setState(() {
       isEditing = _titleFocusNode.hasFocus || _contentFocusNode.hasFocus;
     });
   }
 
-  void _showTitleColorPicker() async {
+  Future<void> _showTitleFontPicker() async {
+    final selectedFont = await showFontPickerDialog(context);
+
+    if (selectedFont != null && mounted) {
+      setState(() => titleFontFamily = selectedFont);
+    }
+  }
+
+  Future<void> _showContentFontPicker() async {
+    final selectedFont = await showFontPickerDialog(context);
+
+    if (selectedFont != null && mounted) {
+      setState(() => contentFontFamily = selectedFont);
+    }
+  }
+
+  Future<void> _showTitleColorPicker() async {
     final selectedColor = await showNoteColorPicker(context);
+
     if (selectedColor != null && mounted) {
       setState(() => titleColor = selectedColor);
     }
   }
 
-  void _showContentColorPicker() async {
+  Future<void> _showContentColorPicker() async {
     final selectedColor = await showNoteColorPicker(context);
+
     if (selectedColor != null && mounted) {
       setState(() => contentColor = selectedColor);
     }
   }
 
-  void _showColorPicker() async {
+  Future<void> _showColorPicker() async {
     final selectedColor = await showNoteColorPicker(context);
+
     if (selectedColor != null && mounted) {
-      setState(() {
-        noteColor = selectedColor;
-      });
+      setState(() => noteColor = selectedColor);
     }
   }
 
   bool _isNoteChanged() {
     final prev = widget.note;
-    if (prev == null) return true; // new note = always “changed”
 
-    return prev.title != title ||
-        prev.content != content ||
+    if (prev == null) return true;
+
+    return prev.title != _titleController.text ||
+        prev.content != _contentController.text ||
         prev.color != _colorToHex(noteColor) ||
         prev.titleTextColor != _colorToHex(titleColor) ||
         prev.contentTextColor != _colorToHex(contentColor) ||
         prev.titleFontFamily != titleFontFamily ||
         prev.contentFontFamily != contentFontFamily ||
         prev.titleFontSize != titleFontSize ||
-        prev.contentFontSize != contentFontSize;
+        prev.contentFontSize != contentFontSize ||
+        prev.isChecklist != _isChecklistMode ||
+        prev.category != (selectedCategory ?? 'Personal');
   }
 
-  // ADD THIS - Update _isSaveButtonEnabled() to include todos
   bool _isSaveButtonEnabled() {
-    if (widget.note?.id == null) return true; // New note always enabled
+    if (widget.note?.id == null) return true;
 
-    // Check title/content + checklist changes
     return _isNoteChanged() || _hasTodoChanges();
   }
 
   void _updateSaveButtonEnablement() {
-    // Push latest text from controllers into `title`/`content`
     title = _titleController.text;
     content = _contentController.text;
 
-    setState(() {
-      // force rebuild of Save button text
-    });
+    if (mounted) {
+      setState(() {});
+    }
   }
 
-  void _save() async {
+  Future<void> _save() async {
     if (_isSaving) return;
+    if (!_formKey.currentState!.validate()) return;
 
-    final messenger = ScaffoldMessenger.of(context);
+    _formKey.currentState!.save();
+
+    setState(() {
+      _isSaving = true;
+      title = _titleController.text;
+      content = _contentController.text;
+    });
 
     try {
-      // Push latest text into our fields before saving
-      setState(() {
-        title = _titleController.text;
-        content = _contentController.text;
-      });
-
-      if (!_formKey.currentState!.validate()) return;
-      _formKey.currentState!.save();
-
-      // Generate createdAt only for NEW notes
-      final String createdAt = widget.note?.id == null
-          ? DateTime.now().toIso8601String()
-          : widget.note!.createdAt;
+      debugPrint('--- SAVING CHECKLIST ---');
+      debugPrint('Title: ${_titleController.text}');
+      debugPrint('Checklist mode: $_isChecklistMode');
+      debugPrint('Tasks in memory: ${_todoList.length}');
+      debugPrint('Task values: ${_todoList.map((task) => task.text).toList()}');
+      final isNew = widget.note?.id == null;
 
       final note = Note(
         id: widget.note?.id,
-        title: title,
-        content: content,
+        title: _titleController.text,
+        content: _contentController.text,
         color: _colorToHex(noteColor),
         titleTextColor: _colorToHex(titleColor),
         contentTextColor: _colorToHex(contentColor),
         titleFontFamily: titleFontFamily,
         contentFontFamily: contentFontFamily,
-        category: widget.note?.category ?? 'Personal',
-        createdAt: createdAt,
+        category: selectedCategory ?? widget.note?.category ?? 'Personal',
+        createdAt: isNew
+            ? DateTime.now().toIso8601String()
+            : widget.note!.createdAt,
         titleFontSize: titleFontSize,
         contentFontSize: contentFontSize,
-        todoList: List<TodoItem>.from(_todoList), // defensive copy
+        isChecklist: _isChecklistMode,
+        todoList: List<TodoItem>.from(_todoList),
+        isCompleted: widget.note?.isCompleted ?? false,
       );
 
-      if (widget.note?.id == null) {
+      late final Note savedNote;
+
+      if (isNew) {
         final newId = await DatabaseService.addNote(note);
+        if (!mounted) return;
 
-        if (!mounted) return; // FIX
-
-        final noteWithId = note.copyWith(id: newId);
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          ref.read(todoNotesProvider.notifier).addTodoNote(noteWithId);
-        });
-
-        Navigator.pop(context, noteWithId);
+        savedNote = note.copyWith(id: newId);
+        ref.read(todoNotesProvider.notifier).addTodoNote(savedNote);
       } else {
-        // EXISTING note (edit)
         await DatabaseService.updateNote(note);
+        if (!mounted) return;
 
-        if (!mounted) return; // FIX
-
-        // Update provider directly (no need for post frame)
-        ref.read(todoNotesProvider.notifier).updateTodoNote(note);
-
-        // Safe to use context now
-        Navigator.pop(context, note);
+        savedNote = note;
+        ref.read(todoNotesProvider.notifier).updateTodoNote(savedNote);
       }
 
-      // Unfocus and exit editing UI
-      _titleFocusNode.unfocus();
-      _contentFocusNode.unfocus();
-      setState(() => isEditing = false);
+      if (!mounted) return;
 
-      // Show success
-      messenger.showSnackBar(
+      // Show feedback before closing the form.
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            textAlign: TextAlign.center,
-            widget.note?.id == null ? 'Note created!' : 'Note updated!',
-          ),
+          content: Text(isNew ? 'Note created!' : 'Note updated!'),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       );
-    } catch (e) {
-      if (context.mounted) {
-        // debugPrint('$e');
-        messenger.showSnackBar(
+
+      Navigator.of(context).pop<Note>(savedNote);
+    } catch (e, stackTrace) {
+      debugPrint('Save failed: $e');
+      debugPrintStack(label: 'Save stack trace', stackTrace: stackTrace);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Save failed: $e'),
             backgroundColor: Colors.red,
@@ -298,9 +318,9 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
       isEditing = true;
     });
 
-    // New notes have no database ID yet.
-    // Their checklist will be saved when the user saves the note.
     final noteId = widget.note?.id;
+
+    // New notes are persisted when Save is pressed.
     if (noteId == null) return;
 
     final updatedNote = Note(
@@ -312,10 +332,12 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
       contentTextColor: _colorToHex(contentColor),
       titleFontFamily: titleFontFamily,
       contentFontFamily: contentFontFamily,
-      category: widget.note?.category ?? 'Personal',
+      category: selectedCategory ?? widget.note?.category ?? 'Personal',
       createdAt: widget.note!.createdAt,
       titleFontSize: titleFontSize,
       contentFontSize: contentFontSize,
+      isChecklist: _isChecklistMode,
+      isCompleted: widget.note?.isCompleted ?? false,
       todoList: List<TodoItem>.from(_todoList),
     );
 
@@ -324,7 +346,6 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
 
       if (!mounted) return;
 
-      // Update the Riverpod state so the change appears immediately.
       ref.read(todoNotesProvider.notifier).updateTodoNote(updatedNote);
     } catch (e) {
       if (!mounted) return;
@@ -338,54 +359,51 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
     }
   }
 
-  // NEW: build checklist UI
   Widget _buildChecklistView() {
     return ListView.builder(
-      itemCount: _todoList.length + 1,
+      itemCount: _todoList.length,
       padding: const EdgeInsets.only(bottom: 100),
       itemBuilder: (context, index) {
-        if (index == _todoList.length) {
-          return const SizedBox(height: 80);
-        }
-
         final item = _todoList[index];
 
         return ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: 4,
-          ),
-          dense: true,
+          key: ValueKey(item.id),
+          titleAlignment: ListTileTitleAlignment.center,
 
+          dense: true,
           leading: Checkbox(
             value: item.isCompleted,
-            onChanged: (value) {
-              if (value == null) return;
-              _updateTodoCompletion(index, value);
-            },
+            onChanged: widget.note?.id == null
+                ? null
+                : (value) {
+                    _updateTodoCompletion(index, value ?? false);
+                  },
           ),
-
           title: TextFormField(
+            key: ValueKey('task-${item.id}'),
             initialValue: item.text,
             decoration: const InputDecoration(
-              hintText: 'Task',
+              hintText: 'Enter task',
               border: InputBorder.none,
               isDense: true,
             ),
             maxLines: 2,
             style: const TextStyle(fontSize: 14),
             onChanged: (newText) {
-              setState(() {
-                _todoList[index] = TodoItem(
-                  id: item.id,
-                  text: newText,
-                  isCompleted: item.isCompleted,
-                );
-              });
-              _checkTodoChanges();
+              _todoList[index] = TodoItem(
+                id: item.id,
+                text: newText,
+                isCompleted: item.isCompleted,
+              );
+            },
+            onSaved: (value) {
+              _todoList[index] = TodoItem(
+                id: item.id,
+                text: value ?? '',
+                isCompleted: item.isCompleted,
+              );
             },
           ),
-
           trailing: IconButton(
             icon: const Icon(Icons.delete_outline, color: Colors.red),
             onPressed: () {
@@ -393,7 +411,6 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
                 _todoList.removeAt(index);
                 isEditing = true;
               });
-              _checkTodoChanges();
             },
           ),
         );
@@ -401,48 +418,35 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
     );
   }
 
-  // Track if todo list changed
   bool _hasTodoChanges() {
     final original = widget.note?.todoList ?? [];
 
-    final Map<String, TodoItem> oldMap = {
-      for (var item in original) item.id: item,
-    };
+    if (original.length != _todoList.length) return true;
 
-    final Map<String, TodoItem> newMap = {
-      for (var item in _todoList) item.id: item,
-    };
+    for (var i = 0; i < original.length; i++) {
+      final oldItem = original[i];
+      final newItem = _todoList[i];
 
-    if (oldMap.length != newMap.length) return true;
-
-    for (final id in newMap.keys) {
-      final oldItem = oldMap[id];
-      final newItem = newMap[id];
-
-      if (oldItem == null || newItem == null) return true;
-
-      if (oldItem.text.trim() != newItem.text.trim()) return true;
-
-      if (oldItem.isCompleted != newItem.isCompleted) return true;
+      if (oldItem.id != newItem.id ||
+          oldItem.text.trim() != newItem.text.trim() ||
+          oldItem.isCompleted != newItem.isCompleted) {
+        return true;
+      }
     }
 
     return false;
   }
 
-  // Force save button update
   void _checkTodoChanges() {
-    setState(() {}); // Triggers _isSaveButtonEnabled() check
+    if (mounted) {
+      setState(() {});
+    }
   }
 
-  // Add this method
   Future<void> _captureNoteContent() async {
-    if (_isCapturing) return; // Prevent double taps
+    if (_isCapturing) return;
 
-    setState(() {
-      _isCapturing = true; // 🔥 INSTANT visual feedback
-    });
-
-    debugPrint('🔥 Camera tapped!');
+    setState(() => _isCapturing = true);
 
     final screenWidth = MediaQuery.of(context).size.width;
 
@@ -450,21 +454,18 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Flexible(
-          // ← ADD THIS
-          child: Container(
-            constraints: BoxConstraints(maxWidth: screenWidth * 0.8),
-            child: Text(
-              content.isEmpty ? 'Your content here' : content,
-              textAlign: TextAlign.start,
-              maxLines: null, // Allow unlimited lines
-              overflow: TextOverflow.visible, // Don't clip
-              style: TextStyle(
-                fontFamily: contentFontFamily,
-                color: contentColor,
-                fontSize: contentFontSize,
-                height: 1.5,
-              ),
+        Container(
+          constraints: BoxConstraints(maxWidth: screenWidth * 0.8),
+          child: Text(
+            content.isEmpty ? 'Your content here' : content,
+            textAlign: TextAlign.start,
+            maxLines: null,
+            overflow: TextOverflow.visible,
+            style: TextStyle(
+              fontFamily: contentFontFamily,
+              color: contentColor,
+              fontSize: contentFontSize,
+              height: 1.5,
             ),
           ),
         ),
@@ -474,7 +475,7 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
     final noteWidget = Material(
       color: noteColor,
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: IntrinsicHeight(child: IntrinsicWidth(child: noteContent)),
       ),
     );
@@ -482,27 +483,22 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
     try {
       final image = await screenshotController.captureFromWidget(
         noteWidget,
-        delay: Duration(milliseconds: 1),
-        pixelRatio: 8.0, // 🔥 CRISP, PROFESSIONAL QUALITY
+        delay: const Duration(milliseconds: 1),
+        pixelRatio: 8.0,
       );
 
-      // debugPrint(' Ultra HD Image: ${image.length} bytes');
       if (mounted) {
-        _showScreenshotDialog(image); // Your existing dialog
+        _showScreenshotDialog(image);
       }
     } catch (e) {
-      // debugPrint('❌ Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     } finally {
-      // 🔥 Reset animation when done
       if (mounted) {
-        setState(() {
-          _isCapturing = false;
-        });
+        setState(() => _isCapturing = false);
       }
     }
   }
@@ -520,30 +516,33 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
 
   @override
   void dispose() {
-    _titleFocusNode.dispose();
-    _contentFocusNode.dispose();
-    _contentController.dispose();
+    _titleController.removeListener(_updateSaveButtonEnablement);
+    _contentController.removeListener(_updateSaveButtonEnablement);
+
     _titleFocusNode.removeListener(_handleFocusChange);
     _contentFocusNode.removeListener(_handleFocusChange);
+
+    _titleFocusNode.dispose();
+    _contentFocusNode.dispose();
+    _titleController.dispose();
+    _contentController.dispose();
     _numberingNotifier.dispose();
-    // _contentScrollController.dispose();
+
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    //  Watch SEPARATE providers for each field
     final titleSize = ref.watch(titleFontSizeProvider);
     final contentSize = ref.watch(contentFontSizeProvider);
-    final screenWidth = Func().screenWidth(context);
 
-    debugPrint('screenHeight:$screenWidth\n');
+    Func().screenWidth(context);
 
-    // 🔥 Sync INDEPENDENTLY
     if (titleFontSize != titleSize) titleFontSize = titleSize;
     if (contentFontSize != contentSize) contentFontSize = contentSize;
 
     final bool showChecklist = _isChecklistMode;
+
     return Scaffold(
       backgroundColor: noteColor,
       appBar: AppBar(
@@ -557,7 +556,6 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
                 style: const TextStyle(color: Colors.white, fontSize: 18),
               ),
             ),
-            // Numbering icon
             ValueListenableBuilder<bool>(
               valueListenable: _numberingNotifier,
               builder: (context, value, child) {
@@ -570,6 +568,7 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
                   ),
                   onPressed: () {
                     final selection = _contentController.selection;
+
                     if (selection.start == selection.end) return;
 
                     _numberingNotifier.value = !value;
@@ -586,17 +585,18 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
                               selection.start,
                               selection.end,
                             );
+
                       _contentController.value = TextEditingValue(
                         text: newText,
                         selection: selection,
                       );
+
                       _checkTodoChanges();
                     });
                   },
                 );
               },
             ),
-
             IconButton(
               icon: Container(
                 width: 28,
@@ -638,28 +638,31 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
                   titleFontSize: titleFontSize,
                   contentFontSize: contentFontSize,
                 ),
-                // In your NoteFormWidget build method, UPDATE this line:
                 NoteBottomSheet(
                   onCancel: () {
                     if (Navigator.of(context).canPop()) {
-                      Navigator.of(context, rootNavigator: true).pop();
+                      Navigator.of(context).pop();
                     }
                   },
                   onSave: _save,
                   onAddTask: () {
                     setState(() {
+                      _isChecklistMode = true;
+
                       _todoList.add(
                         TodoItem(
-                          id: DateTime.now().millisecondsSinceEpoch.toString(),
+                          id: DateTime.now().microsecondsSinceEpoch.toString(),
                           text: '',
                           isCompleted: false,
                         ),
                       );
+
+                      isEditing = true;
                     });
                   },
                   isSaving: _isSaving,
                   isSaveButtonEnabled: _isSaveButtonEnabled(),
-                  isChecklistMode: _isChecklistMode, // IMPORTANT
+                  isChecklistMode: _isChecklistMode,
                 ),
               ],
             ),
@@ -678,8 +681,9 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
                     textColor: titleColor,
                     fontSize: titleFontSize,
                   ),
+
                   if (showChecklist) ...[
-                    // Wrap checklist with GestureDetector for tap-to-edit
+                    // To-Do notes: show tasks only, not the content field.
                     Expanded(
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
@@ -692,22 +696,24 @@ class _NoteFormWidgetState extends ConsumerState<NoteFormWidget> {
                       ),
                     ),
                   ] else ...[
-                    NoteContentField(
-                      controller: _contentController,
-                      focusNode: _contentFocusNode,
-                      fontFamily: contentFontFamily,
-                      textColor: contentColor,
-                      fontSize: contentFontSize,
+                    // Regular notes: show the content field.
+                    Expanded(
+                      child: NoteContentField(
+                        controller: _contentController,
+                        focusNode: _contentFocusNode,
+                        fontFamily: contentFontFamily,
+                        textColor: contentColor,
+                        fontSize: contentFontSize,
+                      ),
                     ),
                   ],
                 ],
               ),
             ),
           ),
-          //  FIXED: Positioned screenshot button - now properly inside Stack
           Positioned(
             right: 20,
-            bottom: 100, // Above bottomSheet
+            bottom: 100,
             child: ScreenshotCaptureButton(
               isCapturing: _isCapturing,
               onCapture: _captureNoteContent,

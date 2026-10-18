@@ -1,14 +1,12 @@
-// lib/forms/push_note_form.dart
 import 'package:flutter/material.dart';
 import 'package:notibuku/forms/note_form_widget.dart';
-import '../../models/note.dart';
+import 'package:notibuku/models/note.dart';
 
-Future<void> pushNoteForm({required BuildContext context, Note? note}) async {
-  await Navigator.of(context).push<bool>(
-    MaterialPageRoute(
+Future<Note?> pushNoteForm({required BuildContext context, Note? note}) async {
+  return Navigator.of(context).push<Note>(
+    MaterialPageRoute<Note>(
       builder: (_) => NoteFormWidget(note: note),
       fullscreenDialog: true,
     ),
   );
-  // No ref.invalidate needed - parent handles refresh
 }

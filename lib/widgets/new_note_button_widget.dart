@@ -1,12 +1,13 @@
 // lib/widgets/new_note_button.dart
+
 import 'package:flutter/material.dart';
 import '../forms/push_note_form.dart';
 import '../models/note.dart';
 
 class NewNoteButton extends StatelessWidget {
   final double screenWidth;
-  final VoidCallback? onRefresh; // ← loadNotes() callback
-  final String? defaultCategory; // ← Smart category
+  final Future<void> Function()? onRefresh;
+  final String? defaultCategory;
 
   const NewNoteButton({
     super.key,
@@ -25,23 +26,28 @@ class NewNoteButton extends StatelessWidget {
         : screenWidth * 0.70;
 
     final double buttonHeight = isLandscape ? 32 : 40;
-
     final double fontSize = isLandscape ? 16 : 20;
     final double borderRadius = isLandscape ? 16 : 20;
     final double margin = isLandscape ? 8 : 10;
 
     return InkWell(
       onTap: () async {
-        await pushNoteForm(
-          context: context,
-          note: Note(
-            title: '',
-            content: '',
-            createdAt: DateTime.now().toIso8601String(),
-            category: defaultCategory ?? 'Personal',
-          ),
+        final category = defaultCategory ?? 'Personal';
+        final isTodo = category == 'To-Do';
+
+        final newNote = Note(
+          title: '',
+          content: '',
+          createdAt: DateTime.now().toIso8601String(),
+          category: category,
+          isChecklist: isTodo,
+          todoList: const [],
+          isCompleted: false,
         );
-        onRefresh?.call(); // Refresh parent list
+
+        await pushNoteForm(context: context, note: newNote);
+
+        await onRefresh?.call();
       },
       child: Container(
         alignment: Alignment.center,
